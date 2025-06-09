@@ -174,7 +174,8 @@ interface LocalizationJson {
         readonly DataRepo: string,
         readonly Issues: string,
         readonly Forum: string,
-        readonly Github: string
+        readonly Github: string,
+        readonly DarkMode: string
     }
 
     readonly Sidebar: {
@@ -269,6 +270,9 @@ class NavbarLocalization extends AbstractLocalization {
     }
     get Github(): string {
         return `${this.class}.${this.layout}.Github`;
+    }
+    get DarkMode(): string {
+        return `${this.class}.${this.layout}.DarkMode`;
     }
 }
 
