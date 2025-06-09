@@ -1,6 +1,7 @@
 import { Container } from "../utils";
 import * as d3 from "d3";
 import { Nation } from "../data/wiki-data";
+import { DATA_BASE } from "../config";
 
 export class GlobalEnv {
     static init() {
@@ -33,4 +34,4 @@ export const brs = {
     ]
 };
 
-export const dataUrl = "https://controlnet.space/wt-data-project.data";
+export const dataUrl = DATA_BASE;
