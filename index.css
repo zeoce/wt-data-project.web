@@ -8,13 +8,9 @@ body.dark-mode {
     color: #EEFFFF;
 }
 
-/* ensure SVG text is visible in both modes */
+/* ensure SVG text adapts to the page text color */
 svg text {
-    fill: black;
-}
-
-body.dark-mode svg text {
-    fill: #EEFFFF;
+    fill: currentColor;
 }
 
 ul#navbar {
