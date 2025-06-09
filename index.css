@@ -1,3 +1,18 @@
+body {
+    background-color: white;
+    color: black;
+}
+
+body.dark-mode {
+    background-color: #000;
+    color: #EEFFFF;
+}
+
+/* ensure SVG text inherits page color so axis labels stay visible in dark mode */
+svg text {
+    fill: currentColor;
+}
+
 ul#navbar {
     list-style-type: none;
     margin: 0;
@@ -30,6 +45,22 @@ ul#navbar > li > a {
     text-align: center;
     padding: 14px 16px;
     text-decoration: none;
+}
+
+ul#navbar > li > label {
+    display: block;
+    color: #EEFFFF;
+    text-align: center;
+    padding: 14px 16px;
+    cursor: pointer;
+}
+
+ul#navbar > li > label:hover {
+    background-color: #616161;
+}
+
+ul#navbar > li > label > input {
+    margin-left: 4px;
 }
 
 ul#navbar > li > a.link-tab {

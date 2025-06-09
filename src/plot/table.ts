@@ -4,7 +4,8 @@ import * as d3 from "d3";
 import { JoinedData, JoinedRow, JoinedRowGetter } from "../data/joined-data";
 import * as _ from "lodash";
 import { COLORS, Container, Inject, nationColors, Provider, utils } from "../utils";
-import { Content, dataUrl } from "../app/global-env";
+import { Content } from "../app/global-env";
+import { DATA_BASE } from "../config";
 import { BRHeatMapPage } from "../app/page/br-heatmap-page";
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import "tabulator-tables/dist/css/tabulator.min.css";
@@ -158,7 +159,7 @@ export class Table extends Plot {
     }
 
     get dataPath(): string {
-        return `${dataUrl}/joined/${this.page.date}.csv`;
+        return `${DATA_BASE}/joined/${this.page.date}.csv`;
     }
 }
 

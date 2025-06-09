@@ -2,5 +2,6 @@
 **/*.rs.bk
 Cargo.lock
 bin/
-pkg/
+# Keep built package for JS fallback implementation
+!pkg/
 wasm-pack.log

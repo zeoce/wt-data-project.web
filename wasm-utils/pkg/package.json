@@ -1,0 +1,6 @@
+{
+  "name": "wasm-utils",
+  "version": "0.1.0",
+  "main": "wasm_utils.js",
+  "types": "wasm_utils.d.ts"
+}

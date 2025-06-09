@@ -6,7 +6,8 @@ import { TimeseriesData, TimeseriesRow, TimeseriesRowGetter } from "../data/time
 import { Container, Inject, Injectable, MousePosition, nationColors, Provider, utils, WasmUtils } from "../utils";
 import { Clazz, Mode, Scale } from "../app/options";
 import { Config, Localization, Margin, MeasurementTranslator, NationTranslator } from "../app/config";
-import { dataUrl, nations } from "../app/global-env";
+import { nations } from "../app/global-env";
+import { DATA_BASE } from "../config";
 import { BRHeatMapPage } from "../app/page/br-heatmap-page";
 import { StackedAreaPage } from "../app/page/stacked-area-page";
 import { Nation } from "../data/wiki-data";
@@ -485,7 +486,7 @@ export class StackedLineChart extends LineChart {
     }
 
     get dataPath(): string {
-        return `${dataUrl}/${this.page.mode.toLowerCase()}_ranks_all.csv`
+        return `${DATA_BASE}/${this.page.mode.toLowerCase()}_ranks_all.csv`
     }
 }
 
