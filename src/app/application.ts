@@ -11,7 +11,8 @@ import "../plot/line-chart";
 import "../plot/legend";
 import "../plot/table";
 import "../plot/tooltip";
-import { dataUrl, GlobalEnv } from "./global-env";
+import { GlobalEnv } from "./global-env";
+import { DATA_BASE } from "../config";
 import "./sidebar/sidebar-element";
 import "./sidebar/select";
 import { Logo, LogoClass } from "./image/logo";
@@ -29,7 +30,7 @@ export class Application {
 
     static run(): void {
 
-        d3.json(`${dataUrl}/metadata.json`, async (metadata: Array<Metadata>) => {
+        d3.json(`${DATA_BASE}/metadata.json`, async (metadata: Array<Metadata>) => {
             // load wasm module
             await WasmUtils.init();
             // init Container constants
