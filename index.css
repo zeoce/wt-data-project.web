@@ -1,16 +1,74 @@
-body {
-    background-color: white;
-    color: black;
+/* ---------- base + dark mode ---------- */
+body{
+  background-color:#ffffff;
+  color:#000000;
 }
 
-body.dark-mode {
-    background-color: #000;
-    color: #EEFFFF;
+body.dark-mode{
+  background-color:#000000;
+  color:#EEFFFF;
 }
 
-/* ensure SVG text inherits page color so axis labels stay visible in dark mode */
-svg text {
-    fill: currentColor;
+/* make all SVG text (axis labels, etc.) inherit the current text color */
+svg text{
+  fill:currentColor;
+}
+
+/* ---------- existing UI styles ---------- */
+ul#navbar{
+  list-style-type:none;
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background-color:#2B2B2B;
+  font-family:-apple-system,system-ui,BlinkMacSystemFont,Arial,serif;
+}
+
+div#sidebar label{
+  font-family:-apple-system,system-ui,BlinkMacSystemFont,Arial,serif;
+  margin:3px;
+}
+
+ul#navbar>li{ float:left; }
+
+#nav-logo{
+  text-align:center;
+  height:32px;
+  display:block;
+  margin:0 auto;
+  padding:8.5px 0 8.5px 8.5px;
+}
+
+ul#navbar>li>a{
+  display:block;
+  color:#EEFFFF;
+  text-align:center;
+  padding:14px 16px;
+  text-decoration:none;
+}
+
+ul#navbar>li>label{
+  display:block;
+  color:#EEFFFF;
+  text-align:center;
+  padding:14px 16px;
+  cursor:pointer;
+}
+
+ul#navbar>li>label:hover,
+ul#navbar>li>a:hover{
+  background-color:#616161;
+}
+
+ul#navbar>li>label>input{ margin-left:4px; }
+
+ul#navbar>li>a.link-tab{ color:#89DDFF; }
+ul#navbar>li>a#todo-list{ color:#F07178; }
+
+.new-tag{
+  color:#FFCB6B;
+  font-size:10px;
+  vertical-align:text-top;
 }
 
 ul#navbar {
