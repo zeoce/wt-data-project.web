@@ -1,5 +1,6 @@
 import { Page } from "./page";
 import { Container, Inject, Singleton, utils } from "../../utils";
+import { LazyServiceIdentifer } from "inversify";
 import { BrHeatmap } from "../../plot/br-heatmap";
 import { Sidebar } from "../global-env";
 import { BrRangeSelect, ClassSelect, DateSelect, MeasurementSelect, ModeSelect, Select } from "../sidebar/select";
@@ -13,7 +14,7 @@ import { Checkbox, ColorblindCheckbox } from "../sidebar/checkbox";
 export class BRHeatMapPage extends Page {
     plot: BrHeatmap;
     readonly id = "br-heatmap";
-    @Inject(Localization.Navbar.BrHeatmap) readonly name: string;
+    @Inject(new LazyServiceIdentifer(() => Localization.Navbar.BrHeatmap)) readonly name: string;
     @Inject(Sidebar) sidebar: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>;
 
     update(): void {

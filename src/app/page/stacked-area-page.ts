@@ -6,13 +6,14 @@ import { ClassSelect, ModeSelect, ScaleSelect, Select } from "../sidebar/select"
 import { StackedLineChart } from "../../plot/line-chart";
 import { Clazz, Mode, Scale } from "../options";
 import { Localization } from "../config";
+import { LazyServiceIdentifer } from "inversify";
 
 
 @Singleton(StackedAreaPage)
 export class StackedAreaPage extends Page {
     plot: StackedLineChart;
     readonly id = "stacked-area";
-    @Inject(Localization.Navbar.StackedArea) readonly name: string;
+    @Inject(new LazyServiceIdentifer(() => Localization.Navbar.StackedArea)) readonly name: string;
     @Inject(Sidebar) sidebar: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>;
 
     update(): void {
