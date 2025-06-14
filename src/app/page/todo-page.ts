@@ -3,12 +3,13 @@ import * as d3 from "d3";
 import * as marked from "marked";
 import { Inject, Singleton } from "../../utils";
 import { Localization } from "../config";
+import { LazyServiceIdentifer } from "inversify";
 
 
 @Singleton(TodoPage)
 export class TodoPage extends Page {
     readonly id = "todo-list";
-    @Inject(Localization.Navbar.TodoList) readonly name = "Todo List";
+    @Inject(new LazyServiceIdentifer(() => Localization.Navbar.TodoList)) readonly name = "Todo List";
 
     update(): void {
         // remove old content of previous page
