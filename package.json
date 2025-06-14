@@ -40,9 +40,11 @@
     "@types/lodash": "^4.14.170",
     "@types/marked": "^2.0.3",
     "@types/tabulator-tables": "^5.4.2",
-    "css-loader": "^6.7.3",
+    "copy-webpack-plugin": "^13.0.0",
+    "css-loader": "^6.11.0",
+    "html-webpack-plugin": "^5.6.3",
     "http-server": "^14.1.1",
-    "style-loader": "^3.3.1",
+    "style-loader": "^3.3.4",
     "ts-loader": "^9.2.3",
     "webpack": "^5.40.0",
     "webpack-cli": "^4.2.0"
