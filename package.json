@@ -2,7 +2,8 @@
   "scripts": {
     "build": "webpack",
     "build:production": "webpack -c webpack.prod.js",
-    "watch": "webpack --watch"
+    "watch": "webpack --watch",
+    "start": "http-server ./dist -p 3000"
   },
   "dependencies": {
     "d3": "^4.11.0",
@@ -40,6 +41,7 @@
     "@types/marked": "^2.0.3",
     "@types/tabulator-tables": "^5.4.2",
     "css-loader": "^6.7.3",
+    "http-server": "^14.1.1",
     "style-loader": "^3.3.1",
     "ts-loader": "^9.2.3",
     "webpack": "^5.40.0",
