@@ -1,1 +1,2 @@
-export const DATA_BASE = "https://controlnet.github.io/wt-data-project.data";
+export const DATA_BASE =
+  "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/master";
