@@ -17,7 +17,6 @@ import "./sidebar/sidebar-element";
 import "./sidebar/select";
 import { Logo, LogoClass } from "./image/logo";
 
-
 export class Application {
     static Logo: LogoClass;
     static logo: Logo;
@@ -26,43 +25,47 @@ export class Application {
     static metadata: Array<Metadata>;
     static dates: Array<string>;
     static Links: Array<LinkClass<any>>;
-    static links: Array<Link>
+    static links: Array<Link>;
 
     static run(): void {
 
         d3.json(
-            "https://raw.githubusercontent.com/controlnet/wt-data-project.data/main/metadata.json",
+            // CORS-friendly raw.githubusercontent.com URL
+            "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/master/metadata.json",
             async (metadata: Array<Metadata>) => {
-            // load wasm module
-            await WasmUtils.init();
-            // init Container constants
-            Container.importProvider();
-            await Config.load();
-            await Localization.load();
-            GlobalEnv.init();
 
-            Application.metadata = metadata;
-            // initialize the dates
-            Application.dates = Application.metadata
-                .filter(each => each.type === "joined")
-                .map(each => each.date)
-                .reverse();
-            // initialize the logo
-            Application.logo = Container.get(Application.Logo);
-            Application.logo.init();
+                // load wasm module
+                await WasmUtils.init();
 
-            // initialize the pages
-            Application.pages = Application.Pages.map(Container.get);
-            Application.pages.forEach(page => page.init());
+                // init Container constants
+                Container.importProvider();
+                await Config.load();
+                await Localization.load();
+                GlobalEnv.init();
 
-            // initialize the links
-            Application.links = Application.Links.map(Container.get);
-            Application.links.forEach(link => link.init());
+                Application.metadata = metadata;
 
-            // render the first page
-            Application.pages[0].update();
+                // initialize the dates
+                Application.dates = Application.metadata
+                    .filter(each => each.type === "joined")
+                    .map(each => each.date)
+                    .reverse();
 
-        })
+                // initialize the logo
+                Application.logo = Container.get(Application.Logo);
+                Application.logo.init();
+
+                // initialize the pages
+                Application.pages = Application.Pages.map(Container.get);
+                Application.pages.forEach(page => page.init());
+
+                // initialize the links
+                Application.links = Application.Links.map(Container.get);
+                Application.links.forEach(link => link.init());
+
+                // render the first page
+                Application.pages[0].update();
+        });
     }
 
     static build = {
@@ -86,5 +89,5 @@ export class Application {
         },
 
         class: Application
-    }
+    };
 }
