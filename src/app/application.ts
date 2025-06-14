@@ -30,7 +30,9 @@ export class Application {
 
     static run(): void {
 
-        d3.json(`${DATA_BASE}/metadata.json`, async (metadata: Array<Metadata>) => {
+        d3.json(
+            "https://raw.githubusercontent.com/controlnet/wt-data-project.data/main/metadata.json",
+            async (metadata: Array<Metadata>) => {
             // load wasm module
             await WasmUtils.init();
             // init Container constants
