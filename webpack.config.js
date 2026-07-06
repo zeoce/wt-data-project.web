@@ -34,11 +34,13 @@ module.exports = {
 
   /* ---------- PLUGINS ---------- */
   plugins: [
-    new HtmlPlugin({ template: "./index.html", inject: "body" }),
+    new HtmlPlugin({ template: "./index.html", inject: false }),
     new CopyPlugin({
       patterns: [
         { from: "wasm-utils/pkg/*.wasm", to: "[name][ext]", noErrorOnMissing: true }, // copy optional WASM binary
         { from: "img",                  to: "img" },         // copy images
+        { from: "config",               to: "config" },      // copy runtime config and i18n files
+        { from: "index.css",            to: "." },           // copy root stylesheet
         { from: "public",               to: "." },           // copy Cloudflare Pages metadata
         { from: "CNAME",                to: "." }            // copy custom-domain hint for static hosts
       ]
