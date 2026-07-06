@@ -1018,9 +1018,22 @@ body:not(.dark-mode) .vehicle-card{
   inset:0;
   width:100%;
   height:100%;
-  object-fit:cover;
   object-position:center;
   z-index:0;
+}
+
+.vehicle-art img.fit-cover{
+  object-fit:cover;
+}
+
+.vehicle-art img.fit-contain{
+  object-fit:contain;
+  padding:10px;
+}
+
+.vehicle-art.using-fallback-image img{
+  object-fit:contain;
+  padding:10px;
 }
 
 .vehicle-art.has-image:before{

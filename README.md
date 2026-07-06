@@ -70,7 +70,21 @@ npm run check:dist
 
 `prepare:data` downloads upstream metadata from `ControlNet/wt-data-project.data`, writes `public/data/metadata.json`, and writes the latest joined CSV to `public/data/latest-joined.csv`. Webpack copies these files into `dist/data/`, so the deployed app can load `/data/metadata.json` and show an in-app data status.
 
-`prepare:images` builds `public/data/vehicle-images.json` from the official War Thunder Wiki Ground Vehicles page and its official CDN slot thumbnails. The manifest stores remote thumbnail URLs and source metadata; it does not download or redistribute image files. Set `WT_DISABLE_IMAGE_FETCH=1` before running the script if the wiki endpoint is down or you need an offline build. Missing or disabled image matches fall back to the local placeholder art in the card gallery.
+`prepare:images` builds `public/data/vehicle-images.json` from the official War Thunder Wiki. It first records slot thumbnails from the Ground Vehicles page as fallbacks, then checks each vehicle page for a higher-quality vehicle-page image. If a MediaWiki-compatible `api.php` endpoint is available, the script can score page-embedded image files from `prop=images` and `prop=imageinfo`; the current public wiki may not expose that endpoint, so the script also supports the official vehicle page OpenGraph image as the primary source. The manifest stores remote image URLs, fallback URLs, dimensions, source type, confidence, scores, and match notes; it does not download or redistribute image files.
+
+Set `WT_DISABLE_IMAGE_FETCH=1` before running `prepare:images` if the wiki endpoint is down or you need an offline build. Missing or disabled image matches fall back to the local placeholder art in the card gallery.
+
+Manual image corrections can be added to `scripts/vehicle-image-overrides.json` by stable vehicle id. Overrides are applied after automatic matching:
+
+```json
+{
+  "us_xm_803": {
+    "sourceFileTitle": "custom-source-note.jpg",
+    "imageUrl": "https://example.com/attributed-image.jpg",
+    "notes": "Better front/side render"
+  }
+}
+```
 
 ### Cloudflare Pages Troubleshooting
 
@@ -91,7 +105,7 @@ This fork preserves upstream attribution and AGPL source availability:
 
 The app displays the prepared data date from `/data/metadata.json`. Thunderskill-derived data is sample-based, and joined data may contain imperfect vehicle matching, so low-sample rows should be treated as directional rather than definitive.
 
-The Ground RB card gallery uses `public/data/vehicle-images.json` for best-effort vehicle thumbnails from the official War Thunder Wiki and `static.encyclopedia.warthunder.com` CDN. The manifest is generated from official wiki unit ids and stores remote URLs, source pages, source file names, match confidence, and attribution notes. The app only displays high-confidence matches. Missing, disabled, or failed images fall back to generated placeholder panels. The current upstream `joined` and `wk` CSV snapshots still do not include rank fields or finer vehicle-type labels.
+The Ground RB card gallery uses `public/data/vehicle-images.json` for best-effort vehicle images from the official War Thunder Wiki. Vehicle-page images are preferred when they score as high or medium confidence, official wiki slot thumbnails are retained as fallbacks, and missing, disabled, or failed images fall back to generated placeholder panels. The current upstream `joined` and `wk` CSV snapshots still do not include rank fields or finer vehicle-type labels.
 
 ## Features
 

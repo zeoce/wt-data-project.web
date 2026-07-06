@@ -33,12 +33,19 @@ type SourceInfo = {
 
 type VehicleImage = {
     imageUrl: string;
+    fallbackImageUrl: string;
     sourcePage: string;
     sourceFileTitle: string;
     sourceUrl: string;
+    sourceKind: "vehicle-page-image" | "wiki-slot-thumbnail" | "placeholder";
+    fallbackSource: "wiki-slot-thumbnail";
+    imageWidth: number;
+    imageHeight: number;
     attribution: string;
     matchedBy: string;
     confidence: "high" | "medium" | "low";
+    score: number;
+    matchNotes: string[];
 };
 
 type VehicleImageManifest = {
@@ -54,7 +61,9 @@ type VehicleImageManifest = {
     stats: {
         totalGroundVehicles: number;
         matched: number;
-        fallbacks: number;
+        vehiclePageImages: number;
+        slotThumbnails: number;
+        placeholders: number;
     };
 };
 
@@ -329,6 +338,7 @@ export class GroundRbPanel {
         const visible = results.slice(0, this.visibleCards);
         this.byId("ground-card-view").innerHTML = visible.map((row, index) => this.vehicleCard(row, filters.minBattles, index + 1)).join("");
         this.bindCardButtons(this.byId("ground-card-view"));
+        this.debugVisibleImages(visible);
         (this.byId("show-more-cards") as HTMLButtonElement).hidden = results.length <= this.visibleCards || this.currentView !== "card";
     }
 
@@ -648,9 +658,11 @@ export class GroundRbPanel {
         if (!image) {
             return `<div class="vehicle-art">${placeholder}</div>`;
         }
+        const fallback = image.sourceKind === "vehicle-page-image" ? image.fallbackImageUrl : "";
+        const fitClass = this.imageFitClass(image);
         return `
-            <div class="vehicle-art has-image">
-                <img src="${this.escape(image.imageUrl)}" alt="${this.displayName(row)} vehicle image" loading="lazy" onerror="this.closest('.vehicle-art').classList.add('image-failed'); this.remove();">
+            <div class="vehicle-art has-image" data-image-source="${this.escape(image.sourceKind)}" data-image-score="${this.escape(String(image.score || 0))}">
+                <img class="${fitClass}" src="${this.escape(image.imageUrl)}" data-fallback-src="${this.escape(fallback || "")}" alt="${this.displayName(row)} vehicle image" loading="lazy" onerror="if (this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; this.dataset.fallbackSrc = ''; this.classList.add('fit-contain'); this.closest('.vehicle-art').classList.add('using-fallback-image'); } else { this.closest('.vehicle-art').classList.add('image-failed'); this.remove(); }">
                 <div class="vehicle-art-overlay" aria-hidden="true"></div>
                 <div class="vehicle-art-badges" aria-hidden="true">
                     <span>${this.escape(row.nation)}</span>
@@ -665,7 +677,9 @@ export class GroundRbPanel {
     private vehicleImage(row: JoinedRow): VehicleImage | null {
         if (!this.imageManifest || !this.imageManifest.images) return null;
         const image = this.imageManifest.images[row.name] || this.imageManifest.images[row.wk_name];
-        if (!image || image.confidence !== "high") return null;
+        if (!image || !image.imageUrl) return null;
+        if (image.sourceKind === "vehicle-page-image" && (image.confidence === "high" || image.confidence === "medium")) return image;
+        if (image.sourceKind === "wiki-slot-thumbnail") return image;
         return image;
     }
 
@@ -674,7 +688,34 @@ export class GroundRbPanel {
             return "Vehicle image manifest is optional and was not loaded, so cards fall back to local placeholder panels.";
         }
         const source = this.imageManifest.source;
-        return `Vehicle card images are best-effort remote thumbnails from <a href="${this.escape(source.groundPage)}">${this.escape(source.name)}</a> / <a href="${this.escape(source.cdn)}">official wiki CDN</a>; ${this.escape(String(this.imageManifest.stats.matched))} matched and ${this.escape(String(this.imageManifest.stats.fallbacks))} use placeholders. Matching is based on joined vehicle ids and can miss renamed or unavailable vehicles. Images are referenced remotely rather than copied into this AGPL repository.`;
+        return `Vehicle card images prefer higher-quality best-effort vehicle-page images from <a href="${this.escape(source.groundPage)}">${this.escape(source.name)}</a>, with official wiki slot thumbnails from <a href="${this.escape(source.cdn)}">the wiki CDN</a> as fallbacks. ${this.escape(String(this.imageManifest.stats.vehiclePageImages || 0))} use vehicle-page images, ${this.escape(String(this.imageManifest.stats.slotThumbnails || 0))} use slot thumbnails, and ${this.escape(String(this.imageManifest.stats.placeholders || 0))} use placeholders. Matching is based on joined vehicle ids and can miss renamed or unavailable vehicles. Images are referenced remotely rather than copied into this AGPL repository.`;
+    }
+
+    private imageFitClass(image: VehicleImage): string {
+        const width = Number(image.imageWidth || 0);
+        const height = Number(image.imageHeight || 0);
+        const ratio = width && height ? width / height : 0;
+        if (image.sourceKind === "wiki-slot-thumbnail" || width < 640 || ratio < 1.2 || ratio > 2.2) {
+            return "fit-contain";
+        }
+        return "fit-cover";
+    }
+
+    private debugVisibleImages(rows: JoinedRow[]): void {
+        if (new URLSearchParams(window.location.search).get("debugImages") !== "1") return;
+        if (!this.imageManifest || !console.table) return;
+        console.table(rows.map(row => {
+            const image = this.vehicleImage(row);
+            return {
+                vehicle: this.displayName(row).replace(/&quot;/g, "\"").replace(/&amp;/g, "&"),
+                id: row.name,
+                sourceKind: image ? image.sourceKind : "placeholder",
+                confidence: image ? image.confidence : "low",
+                score: image ? image.score : 0,
+                dimensions: image ? `${image.imageWidth || 0}x${image.imageHeight || 0}` : "0x0",
+                sourceFileTitle: image ? image.sourceFileTitle : ""
+            };
+        }));
     }
 
     private typeLabel(row: JoinedRow): string {
