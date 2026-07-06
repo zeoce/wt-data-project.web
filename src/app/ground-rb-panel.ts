@@ -33,6 +33,8 @@ type SourceInfo = {
 
 type VehicleImage = {
     imageUrl: string;
+    thumbnailUrl?: string;
+    previewUrl?: string;
     fallbackImageUrl: string;
     sourcePage: string;
     sourceFileTitle: string;
@@ -230,6 +232,21 @@ export class GroundRbPanel {
                 <p>${this.imageSourceCopy()} Ground frags and deaths on cards are estimates derived from battles and per-battle/per-death rates.</p>
                 <p>Prepared: ${this.formatDate(this.sourceInfo.generatedAt)}. Latest data date: ${latest ? this.escape(latest.date) : "N/A"}.</p>
             </aside>
+            <div id="vehicle-image-modal" class="vehicle-image-modal" hidden>
+                <div class="vehicle-image-backdrop" data-modal-close></div>
+                <section class="vehicle-image-dialog" role="dialog" aria-modal="true" aria-labelledby="vehicle-image-title">
+                    <div class="vehicle-image-dialog-head">
+                        <div>
+                            <h3 id="vehicle-image-title"></h3>
+                            <a id="vehicle-image-source" href="#" target="_blank" rel="noreferrer"></a>
+                        </div>
+                        <button type="button" id="vehicle-image-close" aria-label="Close image preview">Close</button>
+                    </div>
+                    <div class="vehicle-image-preview-frame">
+                        <img id="vehicle-image-preview" alt="" onerror="this.closest('.vehicle-image-dialog').classList.add('image-failed'); this.removeAttribute('src');">
+                    </div>
+                </section>
+            </div>
         `;
         this.bindEvents();
         this.renderMemory();
@@ -249,6 +266,11 @@ export class GroundRbPanel {
         this.byId("show-more-cards").addEventListener("click", () => {
             this.visibleCards += CARD_PAGE_SIZE;
             this.updateResults();
+        });
+        this.byId("vehicle-image-close").addEventListener("click", () => this.closeImagePreview());
+        this.root.querySelector("[data-modal-close]").addEventListener("click", () => this.closeImagePreview());
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape") this.closeImagePreview();
         });
 
         this.byId("preset-win").addEventListener("click", () => this.applyPreset("win"));
@@ -291,6 +313,9 @@ export class GroundRbPanel {
         });
         Array.prototype.forEach.call(container.querySelectorAll("[data-show-plot]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => this.showLegacyPlot(button.getAttribute("data-show-plot")));
+        });
+        Array.prototype.forEach.call(container.querySelectorAll("[data-image-preview]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => this.openImagePreview(button.getAttribute("data-image-preview")));
         });
     }
 
@@ -367,7 +392,7 @@ export class GroundRbPanel {
         const favorite = this.favorites.indexOf(row.name) >= 0;
         const lowSample = this.toNumber(row.rb_battles) < minBattles * 2;
         return `
-            <article class="vehicle-card${lowSample ? " low-sample-card" : ""}" data-nation="${this.escape(row.nation)}">
+            <article class="vehicle-card${this.isPremium(row) ? " premium-card" : ""}${lowSample ? " low-sample-card" : ""}" data-nation="${this.escape(row.nation)}">
                 ${this.vehicleArt(row)}
                 <div class="vehicle-card-body">
                     <h3>${this.displayName(row)}</h3>
@@ -377,8 +402,8 @@ export class GroundRbPanel {
                         <span>${this.escape(row.nation)}</span>
                         <span>${this.escape(this.typeLabel(row))}</span>
                         <span>Rank N/A</span>
-                        ${this.isPremium(row) ? "<span class=\"premium-badge\">Premium</span>" : ""}
                     </div>
+                    <div class="status-row">${this.isPremium(row) ? "<span class=\"premium-badge\">Premium</span>" : ""}</div>
                     <dl class="stat-grid">
                         ${this.stat("Battles", row.rb_battles)}
                         ${this.stat("Win rate", `${this.formatValue(row.rb_win_rate)}%`)}
@@ -389,7 +414,7 @@ export class GroundRbPanel {
                         ${this.stat("SL / game", row.rb_sl_rate)}
                         ${this.stat("RP / game", row.rb_rp_rate)}
                     </dl>
-                    ${lowSample ? "<p class=\"card-caveat\">Low sample: treat cautiously.</p>" : ""}
+                    <div class="card-caveat-row">${lowSample ? "<p class=\"card-caveat\">Low sample: treat cautiously.</p>" : ""}</div>
                     <div class="card-actions">
                         <button type="button" data-select="${this.escape(row.name)}">Details</button>
                         <button type="button" data-compare="${this.escape(row.name)}">${compared ? "Remove" : "Compare"}</button>
@@ -411,6 +436,40 @@ export class GroundRbPanel {
         history.replaceState(null, document.title, `${window.location.pathname}?${params.toString()}${window.location.hash}`);
         this.renderDetail(row);
         this.renderMemory();
+    }
+
+    private openImagePreview(name: string): void {
+        const row = this.rows.filter(item => item.name === name)[0];
+        if (!row) return;
+        const image = this.vehicleImage(row);
+        if (!image) return;
+        const modal = this.byId("vehicle-image-modal") as HTMLElement;
+        const title = this.byId("vehicle-image-title");
+        const link = this.byId("vehicle-image-source") as HTMLAnchorElement;
+        const preview = this.byId("vehicle-image-preview") as HTMLImageElement;
+        const sourceUrl = image.sourceUrl || image.sourcePage || "";
+        title.textContent = (row.alt_name || row.wk_name || row.name).replace(/_/g, " ");
+        preview.closest(".vehicle-image-dialog")?.classList.remove("image-failed");
+        preview.src = image.previewUrl || image.imageUrl;
+        preview.alt = `${title.textContent} vehicle image`;
+        if (sourceUrl) {
+            link.href = sourceUrl;
+            link.textContent = image.sourceFileTitle || "Image source";
+            link.hidden = false;
+        } else {
+            link.hidden = true;
+        }
+        modal.hidden = false;
+        document.body.classList.add("modal-open");
+        (this.byId("vehicle-image-close") as HTMLButtonElement).focus();
+    }
+
+    private closeImagePreview(): void {
+        const modal = this.byId("vehicle-image-modal") as HTMLElement;
+        if (!modal || modal.hidden) return;
+        modal.hidden = true;
+        document.body.classList.remove("modal-open");
+        (this.byId("vehicle-image-preview") as HTMLImageElement).removeAttribute("src");
     }
 
     private renderDetail(row: JoinedRow): void {
@@ -662,7 +721,9 @@ export class GroundRbPanel {
         const fitClass = this.imageFitClass(image);
         return `
             <div class="vehicle-art has-image" data-image-source="${this.escape(image.sourceKind)}" data-image-score="${this.escape(String(image.score || 0))}">
-                <img class="${fitClass}" src="${this.escape(image.imageUrl)}" data-fallback-src="${this.escape(fallback || "")}" alt="${this.displayName(row)} vehicle image" loading="lazy" onerror="if (this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; this.dataset.fallbackSrc = ''; this.classList.add('fit-contain'); this.closest('.vehicle-art').classList.add('using-fallback-image'); } else { this.closest('.vehicle-art').classList.add('image-failed'); this.remove(); }">
+                <button type="button" class="vehicle-image-button" data-image-preview="${this.escape(row.name)}" aria-label="Open ${this.displayName(row)} image preview">
+                    <img class="${fitClass}" src="${this.escape(image.thumbnailUrl || image.imageUrl)}" data-fallback-src="${this.escape(fallback || "")}" alt="${this.displayName(row)} vehicle image" loading="lazy" onerror="if (this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; this.dataset.fallbackSrc = ''; this.classList.add('fit-contain'); this.closest('.vehicle-art').classList.add('using-fallback-image'); } else { this.closest('.vehicle-art').classList.add('image-failed'); this.remove(); }">
+                </button>
                 <div class="vehicle-art-overlay" aria-hidden="true"></div>
                 <div class="vehicle-art-badges" aria-hidden="true">
                     <span>${this.escape(row.nation)}</span>
