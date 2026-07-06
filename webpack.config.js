@@ -37,8 +37,9 @@ module.exports = {
     new HtmlPlugin({ template: "./index.html", inject: "body" }),
     new CopyPlugin({
       patterns: [
-        { from: "wasm-utils/pkg/*.wasm", to: "[name][ext]" }, // copy the WASM binary
-        { from: "img",                  to: "img" }          // copy images
+        { from: "wasm-utils/pkg/*.wasm", to: "[name][ext]", noErrorOnMissing: true }, // copy optional WASM binary
+        { from: "img",                  to: "img" },         // copy images
+        { from: "public",               to: "." }            // copy Cloudflare Pages metadata
       ]
     })
   ],

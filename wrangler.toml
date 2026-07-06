@@ -1,0 +1,2 @@
+name = "wt-data-project-web"
+pages_build_output_dir = "dist"

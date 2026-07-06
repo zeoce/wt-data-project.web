@@ -1,6 +1,7 @@
 {
   "scripts": {
     "build": "webpack",
+    "build:pages": "webpack --config webpack.config.js --mode production",
     "build:production": "webpack -c webpack.prod.js",
     "watch": "webpack --watch",
     "start": "http-server ./dist -p 3000"
@@ -39,6 +40,7 @@
     "@types/d3-transition": "^1.1.0",
     "@types/lodash": "^4.14.170",
     "@types/marked": "^2.0.3",
+    "@types/node": "16.18.126",
     "@types/tabulator-tables": "^5.4.2",
     "copy-webpack-plugin": "^13.0.0",
     "css-loader": "^6.11.0",

@@ -12,28 +12,20 @@ on:
 
 jobs:
   build-test:
-
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
 
-      - name: Setup rust wasm
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-      - name: Build wasm
-        run: |
-          cd wasm-utils
-          wasm-pack build
-
-      - name: Use Node.js 16.x
-        uses: actions/setup-node@v1
+      - name: Use Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 16.x
+          node-version-file: .node-version
 
-      - name: npm install and build
-        run: |
-          npm install
-          npm run build:production
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Cloudflare Pages artifact
+        run: npm run build:pages
         env:
           CI: true
