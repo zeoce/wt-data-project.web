@@ -362,10 +362,14 @@ svg{
   }
 }
 
-/* ---------- Mealspin WT UI polish pass v2 ----------
+/* ---------- Mealspin WT UI polish pass v3 ----------
    Visual-only override layer. Keeps data/app logic unchanged.
-   Fixes: heatmap + colour legend alignment, awkward legacy table spacing,
-   empty trend chart display, card hierarchy, sidebar/nav polish.
+
+   v3 changes:
+   - Stops padding/resizing the SVGs, which was clipping axis labels.
+   - Keeps heatmap + colour bar as a tight inline pair.
+   - Hides the empty legacy trend/chart/table shells until they contain data.
+   - Keeps Ground RB cards/buttons/sidebar polish from earlier passes.
 ----------------------------------------------------- */
 
 :root{
@@ -419,7 +423,7 @@ body{
   line-height:1.45;
 }
 
-/* Top navigation */
+/* Navigation */
 ul#navbar{
   position:sticky;
   top:0;
@@ -468,12 +472,6 @@ ul#navbar>li>label:hover{
 
 #content{
   padding:12px 16px 32px 0;
-}
-
-#content::after{
-  content:"";
-  display:block;
-  clear:both;
 }
 
 #sidebar{
@@ -617,7 +615,7 @@ input:focus-visible{
   border-color:transparent;
 }
 
-/* Ground RB tables */
+/* Ground RB results */
 .ground-rb-results-wrap{
   border-radius:var(--radius);
   overflow:auto;
@@ -688,77 +686,74 @@ input:focus-visible{
   margin:0;
 }
 
-/* Legacy heatmap/chart polish
-   The original app emits separate SVG siblings:
-   #main-svg, #color-bar-svg, #line-chart-svg, #legend-svg.
-   Keep the heatmap and colour bar together instead of splitting them
-   across lines, then give the raw table a contained card below.
+/* Legacy visualization fixes.
+   Important: these are SVG elements with fixed internal dimensions.
+   Do not add padding or force height/width, or the axis labels clip.
 */
 #main-svg,
 #color-bar-svg,
 #line-chart-svg,
 #legend-svg{
-  box-sizing:border-box;
+  box-sizing:content-box;
+  overflow:visible;
   background:var(--panel);
+}
+
+/* Heatmap + colour bar: keep them together as an inline pair. */
+#main-svg{
+  display:inline-block;
+  vertical-align:top;
+  margin:28px 0 18px 0;
   border:1px solid var(--border);
+  border-right:0;
+  border-radius:var(--radius) 0 0 var(--radius);
   box-shadow:var(--shadow);
 }
 
-#main-svg{
-  float:left;
-  display:block;
-  width:600px;
-  height:800px;
-  max-width:calc(100vw - 300px);
-  margin:28px 0 18px 0;
-  padding:12px;
-  border-radius:var(--radius) 0 0 var(--radius);
-  border-right:0;
-}
-
 #color-bar-svg{
-  float:left;
-  display:block;
-  width:74px;
-  height:800px;
-  margin:28px 0 18px 0;
-  padding:12px 8px 12px 0;
-  border-radius:0 var(--radius) var(--radius) 0;
+  display:inline-block;
+  vertical-align:top;
+  margin:28px 0 18px -4px;
+  border:1px solid var(--border);
   border-left:0;
+  border-radius:0 var(--radius) var(--radius) 0;
+  box-shadow:8px 10px 30px rgba(0,0,0,.16);
 }
 
-/* Hide the empty trend panel until it has data. */
+/* Hide empty trend panel/legend until a vehicle is selected and data is drawn. */
 #line-chart-svg:has(#line-chart-g:empty),
-#line-chart-svg:has(#line-chart-g:empty) + #legend-svg{
+#legend-svg:has(#legend-g:empty){
   display:none;
 }
 
 #line-chart-svg{
-  clear:both;
   display:inline-block;
-  width:500px;
-  height:400px;
-  margin:16px 0 18px 0;
-  padding:12px;
-  border-radius:var(--radius) 0 0 var(--radius);
-  border-right:0;
   vertical-align:top;
+  margin:16px 0 18px 0;
+  border:1px solid var(--border);
+  border-right:0;
+  border-radius:var(--radius) 0 0 var(--radius);
+  box-shadow:var(--shadow);
 }
 
 #legend-svg{
   display:inline-block;
-  width:160px;
-  height:400px;
-  margin:16px 0 18px 0;
-  padding:12px 8px 12px 0;
-  border-radius:0 var(--radius) var(--radius) 0;
-  border-left:0;
   vertical-align:top;
+  margin:16px 0 18px -4px;
+  border:1px solid var(--border);
+  border-left:0;
+  border-radius:0 var(--radius) var(--radius) 0;
+  box-shadow:8px 10px 30px rgba(0,0,0,.16);
 }
 
-/* Raw/legacy selected table */
+/* Hide the raw legacy table shell when it is empty.
+   It becomes visible again if the table is populated. */
+#selected-table-div:has(#selected-table:empty){
+  display:none;
+}
+
 #selected-table-div{
-  clear:both;
+  display:block;
   max-width:1220px;
   margin:16px 0 32px 0;
   padding:14px;
@@ -770,8 +765,6 @@ input:focus-visible{
   -webkit-overflow-scrolling:touch;
 }
 
-/* The app leaves a hidden export button in this region; keep it from
-   creating odd spacing in the polished layout. */
 #selected-table-div > button[style*="visibility:hidden"]{
   display:none !important;
 }
@@ -807,7 +800,7 @@ input:focus-visible{
   background:var(--row-hover);
 }
 
-/* Tabulator fallback if the library wraps/replaces the selected table. */
+/* Tabulator fallback */
 .tabulator{
   border-radius:var(--radius);
   border-color:var(--border);
@@ -827,7 +820,7 @@ input:focus-visible{
   color:var(--text);
 }
 
-/* Mobile refinements */
+/* Mobile */
 @media (max-width:900px){
   ul#navbar{
     overflow-x:auto;
@@ -868,12 +861,12 @@ input:focus-visible{
   #color-bar-svg,
   #line-chart-svg,
   #legend-svg{
-    float:none;
     display:block;
-    max-width:none;
+    max-width:100%;
     margin:14px 0;
     border:1px solid var(--border);
     border-radius:var(--radius);
+    box-shadow:var(--shadow);
   }
 
   #selected-table-div{
