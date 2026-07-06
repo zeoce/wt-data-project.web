@@ -1,12 +1,35 @@
+:root{
+  --bg:#ffffff;
+  --text:#111111;
+  --muted:#5f6973;
+  --panel:#f6f8fa;
+  --panel-strong:#e8f2ff;
+  --border:#cad3dd;
+  --accent:#1769aa;
+  --accent-text:#ffffff;
+  --warn:#fff4cc;
+  --danger:#ffe1e1;
+  --tap:44px;
+}
+
 /* ---------- base + dark mode ---------- */
 body{
-  background-color:#ffffff;
-  color:#000000;
+  background-color:var(--bg);
+  color:var(--text);
+  margin:0;
 }
 
 body.dark-mode{
-  background-color:#000000;
-  color:#EEFFFF;
+  --bg:#000000;
+  --text:#EEFFFF;
+  --muted:#b8c4cf;
+  --panel:#14191f;
+  --panel-strong:#1d2a36;
+  --border:#334250;
+  --accent:#89DDFF;
+  --accent-text:#001018;
+  --warn:#3d3312;
+  --danger:#3d1818;
 }
 
 /* make all SVG text (axis labels, etc.) inherit the current text color */
@@ -27,6 +50,38 @@ ul#navbar{
 div#sidebar label{
   font-family:-apple-system,system-ui,BlinkMacSystemFont,Arial,serif;
   margin:3px;
+}
+
+#main-div{
+  display:flex;
+  align-items:flex-start;
+}
+
+#sidebar{
+  flex:0 0 190px;
+  padding:8px;
+  position:sticky;
+  top:0;
+  background:var(--bg);
+  z-index:3;
+}
+
+#sidebar label{
+  display:block;
+  margin-bottom:8px;
+}
+
+#sidebar select,
+#sidebar input,
+button{
+  min-height:var(--tap);
+}
+
+#content{
+  flex:1 1 auto;
+  min-width:0;
+  overflow-x:auto;
+  padding:8px;
 }
 
 ul#navbar>li{ float:left; }
@@ -69,4 +124,240 @@ ul#navbar>li>a#todo-list{ color:#F07178; }
   color:#FFCB6B;
   font-size:10px;
   vertical-align:text-top;
+}
+
+.data-status,
+.ground-rb-home,
+.source-card,
+.vehicle-detail,
+.vehicle-compare{
+  border:1px solid var(--border);
+  background:var(--panel);
+  color:var(--text);
+  border-radius:8px;
+  margin:0 0 12px;
+  padding:12px;
+}
+
+.data-status{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 12px;
+  align-items:center;
+  background:var(--panel-strong);
+}
+
+.data-status strong{
+  color:var(--accent);
+}
+
+.data-status small{
+  color:var(--muted);
+}
+
+.data-status.is-error{
+  background:var(--danger);
+}
+
+.ground-rb-home{
+  max-width:1180px;
+}
+
+.ground-rb-filters{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px;
+}
+
+.ground-rb-filters summary{
+  cursor:pointer;
+  font-weight:700;
+  min-height:var(--tap);
+  display:flex;
+  align-items:center;
+}
+
+.ground-rb-intro p,
+.source-card p,
+.data-caveat{
+  color:var(--muted);
+  line-height:1.45;
+}
+
+.preset-bar,
+.search-memory span,
+.detail-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+button,
+.ground-rb-results button{
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:var(--bg);
+  color:var(--text);
+  padding:8px 10px;
+  cursor:pointer;
+  font:inherit;
+}
+
+.preset-bar button,
+#copy-comparison{
+  background:var(--accent);
+  color:var(--accent-text);
+  border-color:var(--accent);
+}
+
+.filter-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:10px;
+  margin-top:10px;
+}
+
+.filter-grid label,
+.search-label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-weight:600;
+}
+
+.filter-grid input,
+.filter-grid select{
+  min-height:var(--tap);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:6px 8px;
+  background:var(--bg);
+  color:var(--text);
+  font:inherit;
+}
+
+.search-memory{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+}
+
+.search-memory strong{
+  display:block;
+  margin-bottom:4px;
+}
+
+.ground-rb-results-wrap{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--bg);
+}
+
+.ground-rb-results,
+.compare-table{
+  border-collapse:collapse;
+  min-width:820px;
+  width:100%;
+}
+
+.ground-rb-results th,
+.ground-rb-results td,
+.compare-table th,
+.compare-table td{
+  border-bottom:1px solid var(--border);
+  padding:8px;
+  text-align:left;
+  white-space:nowrap;
+}
+
+.ground-rb-results th,
+.compare-table th{
+  background:var(--panel-strong);
+  position:sticky;
+  top:0;
+}
+
+.ground-rb-results tr.low-sample{
+  background:var(--warn);
+}
+
+.ground-panels{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:12px;
+  margin-top:12px;
+}
+
+.vehicle-detail h3,
+.vehicle-compare h3,
+.source-card h3{
+  margin-top:0;
+}
+
+.vehicle-detail dl{
+  display:grid;
+  grid-template-columns:max-content minmax(0,1fr);
+  gap:6px 12px;
+}
+
+.vehicle-detail dt{
+  font-weight:700;
+  color:var(--muted);
+}
+
+.source-card a{
+  color:var(--accent);
+}
+
+svg{
+  max-width:none;
+}
+
+@media (max-width:800px){
+  ul#navbar>li{
+    float:none;
+  }
+
+  ul#navbar>li>a,
+  ul#navbar>li>label{
+    text-align:left;
+    min-height:var(--tap);
+    box-sizing:border-box;
+  }
+
+  #main-div{
+    display:block;
+  }
+
+  #sidebar{
+    position:static;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+
+  #content{
+    padding:8px 4px;
+  }
+
+  .ground-rb-filters{
+    top:0;
+  }
+
+  .search-memory,
+  .ground-panels{
+    grid-template-columns:1fr;
+  }
+
+  .ground-rb-results,
+  .compare-table{
+    min-width:760px;
+  }
 }

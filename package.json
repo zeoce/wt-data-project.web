@@ -1,8 +1,12 @@
 {
   "scripts": {
     "build": "webpack",
+    "prepare:data": "node scripts/prepare-data.js",
+    "prebuild:pages": "npm run prepare:data",
     "build:pages": "webpack --config webpack.config.js --mode production",
-    "build:production": "webpack -c webpack.prod.js",
+    "prebuild:production": "npm run prepare:data",
+    "build:production": "webpack -c webpack.prod.js --mode production",
+    "check:dist": "node scripts/check-dist.js",
     "watch": "webpack --watch",
     "start": "http-server ./dist -p 3000"
   },

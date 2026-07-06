@@ -12,7 +12,6 @@ import "../plot/legend";
 import "../plot/table";
 import "../plot/tooltip";
 import { GlobalEnv } from "./global-env";
-import { DATA_BASE } from "../config";
 import "./sidebar/sidebar-element";
 import "./sidebar/select";
 import { Logo, LogoClass } from "./image/logo";
@@ -28,11 +27,20 @@ export class Application {
     static links: Array<Link>;
 
     static run(): void {
+        Application.renderDataStatus("Loading /data/metadata.json...");
 
-        d3.json(
-            // CORS-friendly raw.githubusercontent.com URL
-            "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/master/metadata.json",
-            async (metadata: Array<Metadata>) => {
+        fetch("data/metadata.json")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`data/metadata.json returned HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(async (metadata: Array<Metadata>) => {
+                if (!metadata || !metadata.length) {
+                    Application.renderDataStatus("The local metadata file loaded, but it did not include any entries.", true);
+                    return;
+                }
 
                 // load wasm module
                 await WasmUtils.init();
@@ -65,7 +73,23 @@ export class Application {
 
                 // render the first page
                 Application.pages[0].update();
-        });
+            })
+            .catch(error => {
+                Application.renderDataStatus(
+                    `Required metadata failed to load: ${error instanceof Error ? error.message : "unknown error"}. Check that /data/metadata.json exists in the deployed dist folder.`,
+                    true
+                );
+            });
+    }
+
+    static renderDataStatus(message: string, error = false): void {
+        d3.select("#content")
+            .html("")
+            .append("section")
+            .attr("class", error ? "data-status is-error" : "data-status")
+            .attr("role", "status")
+            .attr("aria-live", "polite")
+            .html(`<strong>Data status</strong><span>${message}</span><small>Required file: /data/metadata.json</small>`);
     }
 
     static build = {
