@@ -1255,24 +1255,6 @@ body:not(.dark-mode) .vehicle-card{
   color:#ffd86b;
 }
 
-.status-row{
-  min-height:28px;
-  margin-bottom:10px;
-}
-
-.status-row .premium-badge{
-  display:inline-flex;
-  align-items:center;
-  min-height:24px;
-  border:1px solid rgba(255,203,107,.32);
-  border-radius:999px;
-  background:rgba(255,203,107,.14);
-  color:#ffd86b;
-  padding:3px 8px;
-  font-size:.78rem;
-  font-weight:850;
-}
-
 .stat-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -1348,8 +1330,8 @@ body.modal-open{
   overflow:hidden;
 }
 
-.vehicle-image-modal[hidden]{
-  display:none;
+[hidden] {
+  display: none !important;
 }
 
 .vehicle-image-modal{
