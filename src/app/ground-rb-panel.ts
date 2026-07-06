@@ -17,6 +17,8 @@ type JoinedRow = {
     rb_win_rate: string;
     rb_ground_frags_per_battle: string;
     rb_ground_frags_per_death: string;
+    rb_rp_rate: string;
+    rb_sl_rate: string;
     is_premium: string;
 };
 
@@ -41,6 +43,10 @@ type Filters = {
 const STORAGE_RECENT = "wt-ground-rb-recent-searches";
 const STORAGE_FAVORITES = "wt-ground-rb-favorites";
 const STORAGE_COMPARE = "wt-ground-rb-compare";
+const CARD_PAGE_SIZE = 50;
+
+type SortMode = "win" | "played" | "gkd" | "gkb" | "brAsc" | "brDesc" | "name";
+type ViewMode = "card" | "table";
 
 export class GroundRbPanel {
     private root: HTMLElement;
@@ -51,6 +57,9 @@ export class GroundRbPanel {
     private compareNames: string[] = [];
     private favorites: string[] = [];
     private recentSearches: string[] = [];
+    private currentSort: SortMode = "win";
+    private currentView: ViewMode = "card";
+    private visibleCards = CARD_PAGE_SIZE;
 
     constructor(metadata: Metadata[]) {
         this.metadata = metadata;
@@ -142,11 +151,31 @@ export class GroundRbPanel {
                     <div><strong>Favourites</strong><span id="favorite-vehicles"></span></div>
                 </div>
             </details>
-            <div class="ground-rb-results-wrap">
+            <div class="results-toolbar" aria-label="Vehicle result display controls">
+                <label>Sort
+                    ${this.selectBare("ground-sort", [
+                        ["win", "Win rate descending"],
+                        ["played", "Battles descending"],
+                        ["gkd", "Ground kills per death descending"],
+                        ["gkb", "Ground kills per battle descending"],
+                        ["brAsc", "BR ascending"],
+                        ["brDesc", "BR descending"],
+                        ["name", "Name A-Z"]
+                    ])}
+                </label>
+                <div class="view-toggle" role="group" aria-label="View mode">
+                    <button type="button" id="view-card" aria-pressed="true">Card view</button>
+                    <button type="button" id="view-table" aria-pressed="false">Table view</button>
+                </div>
+                <span id="result-count" class="result-count"></span>
+            </div>
+            <div id="ground-card-view" class="ground-card-view"></div>
+            <div class="card-more-wrap"><button type="button" id="show-more-cards">Show more</button></div>
+            <div id="ground-table-view" class="ground-rb-results-wrap" hidden>
                 <table class="ground-rb-results" aria-label="Ground RB vehicle results">
                     <thead>
                         <tr>
-                            <th>Vehicle</th><th>Nation</th><th>BR</th><th>Win</th><th>Battles</th><th>G/K</th><th>G/D</th><th>Premium</th><th></th>
+                            <th>Vehicle</th><th>Nation</th><th>BR</th><th>Rank</th><th>Win</th><th>Battles</th><th>G/K</th><th>G/D</th><th>Premium</th><th></th>
                         </tr>
                     </thead>
                     <tbody id="ground-results"></tbody>
@@ -160,6 +189,7 @@ export class GroundRbPanel {
                 <h3>Data, Source, And License</h3>
                 <p>Fork source: <a href="${this.sourceInfo.forkRepo}">zeoce/wt-data-project.web</a>. Upstream web: <a href="${this.sourceInfo.upstreamWebRepo}">ControlNet/wt-data-project.web</a>. Upstream data: <a href="${this.sourceInfo.upstreamDataRepo}">ControlNet/wt-data-project.data</a>.</p>
                 <p>This AGPL project keeps source availability and upstream attribution visible. Thunderskill-derived data is sample-based, and joined vehicle matching may contain errors. Treat low-sample rows as directional, not definitive.</p>
+                <p>Vehicle cards use local placeholder art because the current joined and wk data snapshots do not include safe image URLs, thumbnails, ranks, or finer vehicle-type fields. Ground frags and deaths on cards are estimates derived from battles and per-battle/per-death rates.</p>
                 <p>Prepared: ${this.formatDate(this.sourceInfo.generatedAt)}. Latest data date: ${latest ? this.escape(latest.date) : "N/A"}.</p>
             </aside>
         `;
@@ -172,6 +202,16 @@ export class GroundRbPanel {
     private bindEvents(): void {
         ["ground-nation", "ground-br-min", "ground-br-max", "ground-premium", "ground-min-battles", "ground-search"]
             .forEach(id => this.byId(id).addEventListener("input", () => this.updateResults()));
+        this.byId("ground-sort").addEventListener("change", () => {
+            this.currentSort = (this.byId("ground-sort") as HTMLSelectElement).value as SortMode;
+            this.updateResults();
+        });
+        this.byId("view-card").addEventListener("click", () => this.setView("card"));
+        this.byId("view-table").addEventListener("click", () => this.setView("table"));
+        this.byId("show-more-cards").addEventListener("click", () => {
+            this.visibleCards += CARD_PAGE_SIZE;
+            this.updateResults();
+        });
 
         this.byId("preset-win").addEventListener("click", () => this.applyPreset("win"));
         this.byId("preset-played").addEventListener("click", () => this.applyPreset("played"));
@@ -185,7 +225,58 @@ export class GroundRbPanel {
         }
     }
 
-    private updateResults(sort: "win" | "played" | "frags" = "win"): void {
+    private setView(view: ViewMode): void {
+        this.currentView = view;
+        (this.byId("ground-card-view") as HTMLElement).hidden = view !== "card";
+        (this.byId("ground-table-view") as HTMLElement).hidden = view !== "table";
+        (this.byId("show-more-cards") as HTMLButtonElement).hidden = view !== "card";
+        this.byId("view-card").setAttribute("aria-pressed", String(view === "card"));
+        this.byId("view-table").setAttribute("aria-pressed", String(view === "table"));
+        this.updateResults();
+    }
+
+    private bindCardButtons(container: HTMLElement): void {
+        Array.prototype.forEach.call(container.querySelectorAll("[data-select]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-select")));
+        });
+        Array.prototype.forEach.call(container.querySelectorAll("[data-compare]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => this.toggleCompare(button.getAttribute("data-compare")));
+        });
+        Array.prototype.forEach.call(container.querySelectorAll("[data-fav-toggle]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => {
+                const name = button.getAttribute("data-fav-toggle");
+                if (!name) return;
+                this.toggleName(this.favorites, name, STORAGE_FAVORITES, 99);
+                this.renderMemory();
+                this.updateResults();
+            });
+        });
+        Array.prototype.forEach.call(container.querySelectorAll("[data-show-plot]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => this.showLegacyPlot(button.getAttribute("data-show-plot")));
+        });
+    }
+
+    private compareRows(a: JoinedRow, b: JoinedRow): number {
+        switch (this.currentSort) {
+            case "played":
+                return this.toNumber(b.rb_battles) - this.toNumber(a.rb_battles);
+            case "gkd":
+                return this.toNumber(b.rb_ground_frags_per_death) - this.toNumber(a.rb_ground_frags_per_death);
+            case "gkb":
+                return this.toNumber(b.rb_ground_frags_per_battle) - this.toNumber(a.rb_ground_frags_per_battle);
+            case "brAsc":
+                return this.toNumber(a.rb_br) - this.toNumber(b.rb_br);
+            case "brDesc":
+                return this.toNumber(b.rb_br) - this.toNumber(a.rb_br);
+            case "name":
+                return this.displayName(a).localeCompare(this.displayName(b));
+            case "win":
+            default:
+                return this.toNumber(b.rb_win_rate) - this.toNumber(a.rb_win_rate);
+        }
+    }
+
+    private updateResults(): void {
         const filters = this.filters();
         let results = this.rows
             .filter(row => filters.nation === "all" || row.nation === filters.nation)
@@ -194,23 +285,25 @@ export class GroundRbPanel {
             .filter(row => this.toNumber(row.rb_battles) >= filters.minBattles)
             .filter(row => this.matchesQuery(row, filters.query));
 
-        results = results.sort((a, b) => {
-            if (sort === "played") return this.toNumber(b.rb_battles) - this.toNumber(a.rb_battles);
-            if (sort === "frags") return this.toNumber(b.rb_ground_frags_per_battle) - this.toNumber(a.rb_ground_frags_per_battle);
-            return this.toNumber(b.rb_win_rate) - this.toNumber(a.rb_win_rate);
-        }).slice(0, 30);
+        results = results.sort((a, b) => this.compareRows(a, b));
+        this.byId("result-count").textContent = `${results.length} vehicles`;
 
         const tbody = this.byId("ground-results");
-        tbody.innerHTML = results.map(row => this.resultRow(row, filters.minBattles)).join("");
+        tbody.innerHTML = results.slice(0, 100).map((row, index) => this.resultRow(row, filters.minBattles, index + 1)).join("");
         Array.prototype.forEach.call(tbody.querySelectorAll("[data-select]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-select")));
         });
         Array.prototype.forEach.call(tbody.querySelectorAll("[data-compare]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => this.toggleCompare(button.getAttribute("data-compare")));
         });
+
+        const visible = results.slice(0, this.visibleCards);
+        this.byId("ground-card-view").innerHTML = visible.map((row, index) => this.vehicleCard(row, filters.minBattles, index + 1)).join("");
+        this.bindCardButtons(this.byId("ground-card-view"));
+        (this.byId("show-more-cards") as HTMLButtonElement).hidden = results.length <= this.visibleCards || this.currentView !== "card";
     }
 
-    private resultRow(row: JoinedRow, minBattles: number): string {
+    private resultRow(row: JoinedRow, minBattles: number, rank: number): string {
         const battles = this.toNumber(row.rb_battles);
         const low = battles < minBattles * 2 ? " low-sample" : "";
         const compared = this.compareNames.indexOf(row.name) >= 0;
@@ -219,6 +312,7 @@ export class GroundRbPanel {
                 <td><button type="button" data-select="${this.escape(row.name)}">${this.displayName(row)}</button></td>
                 <td>${this.escape(row.nation)}</td>
                 <td>${this.formatValue(row.rb_br)}</td>
+                <td>#${rank}</td>
                 <td>${this.formatValue(row.rb_win_rate)}%</td>
                 <td>${this.formatValue(row.rb_battles)}</td>
                 <td>${this.formatValue(row.rb_ground_frags_per_battle)}</td>
@@ -226,6 +320,48 @@ export class GroundRbPanel {
                 <td>${this.isPremium(row) ? "Yes" : "No"}</td>
                 <td><button type="button" data-compare="${this.escape(row.name)}">${compared ? "Remove" : "Compare"}</button></td>
             </tr>
+        `;
+    }
+
+    private vehicleCard(row: JoinedRow, minBattles: number, rank: number): string {
+        const compared = this.compareNames.indexOf(row.name) >= 0;
+        const favorite = this.favorites.indexOf(row.name) >= 0;
+        const lowSample = this.toNumber(row.rb_battles) < minBattles * 2;
+        return `
+            <article class="vehicle-card${lowSample ? " low-sample-card" : ""}" data-nation="${this.escape(row.nation)}">
+                <div class="vehicle-art" aria-hidden="true">
+                    <div class="vehicle-art-mark">${this.escape(row.nation.slice(0, 3).toUpperCase())}</div>
+                    <div class="vehicle-art-name">${this.formatValue(row.rb_br)}</div>
+                </div>
+                <div class="vehicle-card-body">
+                    <h3>${this.displayName(row)}</h3>
+                    <div class="badge-row">
+                        <span>#${rank}</span>
+                        <span>BR ${this.formatValue(row.rb_br)}</span>
+                        <span>${this.escape(row.nation)}</span>
+                        <span>${this.escape(this.typeLabel(row))}</span>
+                        <span>Rank N/A</span>
+                        ${this.isPremium(row) ? "<span class=\"premium-badge\">Premium</span>" : ""}
+                    </div>
+                    <dl class="stat-grid">
+                        ${this.stat("Battles", row.rb_battles)}
+                        ${this.stat("Win rate", `${this.formatValue(row.rb_win_rate)}%`)}
+                        ${this.stat("Ground frags", this.estimatedGroundFrags(row))}
+                        ${this.stat("Deaths", this.estimatedDeaths(row))}
+                        ${this.stat("Frags / battle", row.rb_ground_frags_per_battle)}
+                        ${this.stat("Frags / death", row.rb_ground_frags_per_death)}
+                        ${this.stat("SL / game", row.rb_sl_rate)}
+                        ${this.stat("RP / game", row.rb_rp_rate)}
+                    </dl>
+                    ${lowSample ? "<p class=\"card-caveat\">Low sample: treat cautiously.</p>" : ""}
+                    <div class="card-actions">
+                        <button type="button" data-select="${this.escape(row.name)}">Details</button>
+                        <button type="button" data-compare="${this.escape(row.name)}">${compared ? "Remove" : "Compare"}</button>
+                        <button type="button" data-fav-toggle="${this.escape(row.name)}">${favorite ? "Unfavourite" : "Favourite"}</button>
+                        <button type="button" data-show-plot="${this.escape(row.name)}">Show plot</button>
+                    </div>
+                </div>
+            </article>
         `;
     }
 
@@ -313,7 +449,10 @@ export class GroundRbPanel {
         (this.byId("ground-premium") as HTMLSelectElement).value = preset === "premium" ? "premium" : "all";
         (this.byId("ground-min-battles") as HTMLInputElement).value = preset === "sample" ? "2000" : "1000";
         (this.byId("ground-search") as HTMLInputElement).value = "";
-        this.updateResults(preset === "played" ? "played" : preset === "frags" ? "frags" : "win");
+        this.currentSort = preset === "played" ? "played" : preset === "frags" ? "gkb" : "win";
+        (this.byId("ground-sort") as HTMLSelectElement).value = this.currentSort;
+        this.visibleCards = CARD_PAGE_SIZE;
+        this.updateResults();
     }
 
     private filters(): Filters {
@@ -450,8 +589,48 @@ export class GroundRbPanel {
         return `<label>${label}<select id="${id}" aria-label="${label}">${options.map(([value, text]) => `<option value="${value}">${text}</option>`).join("")}</select></label>`;
     }
 
+    private selectBare(id: string, options: Array<[string, string]>): string {
+        return `<select id="${id}" aria-label="Sort vehicles">${options.map(([value, text]) => `<option value="${value}">${text}</option>`).join("")}</select>`;
+    }
+
     private numberInput(id: string, label: string, min: string, max: string, step: string, value: string): string {
         return `<label>${label}<input id="${id}" aria-label="${label}" type="number" min="${min}" max="${max}" step="${step}" value="${value}"></label>`;
+    }
+
+    private stat(label: string, value: string): string {
+        return `<div><dt>${label}</dt><dd>${this.formatValue(value)}</dd></div>`;
+    }
+
+    private typeLabel(row: JoinedRow): string {
+        return row.cls === "Ground_vehicles" ? "Ground vehicle" : row.cls || "Type N/A";
+    }
+
+    private estimatedGroundFrags(row: JoinedRow): string {
+        const battles = this.toNumber(row.rb_battles);
+        const perBattle = this.toNumber(row.rb_ground_frags_per_battle);
+        const estimate = Math.round(battles * perBattle);
+        return estimate > 0 ? `${estimate}` : "N/A";
+    }
+
+    private estimatedDeaths(row: JoinedRow): string {
+        const frags = this.toNumber(this.estimatedGroundFrags(row));
+        const perDeath = this.toNumber(row.rb_ground_frags_per_death);
+        const estimate = perDeath > 0 ? Math.round(frags / perDeath) : 0;
+        return estimate > 0 ? `${estimate}` : "N/A";
+    }
+
+    private showLegacyPlot(name: string): void {
+        const row = this.rows.filter(item => item.name === name)[0];
+        if (!row) return;
+        const classSelect = document.getElementById("class-selection") as HTMLSelectElement;
+        const modeSelect = document.getElementById("mode-selection") as HTMLSelectElement;
+        const brRangeSelect = document.getElementById("br-range-selection") as HTMLSelectElement;
+        if (classSelect) classSelect.value = "Ground_vehicles";
+        if (modeSelect) modeSelect.value = "rb";
+        if (brRangeSelect) brRangeSelect.value = "1";
+        const target = document.getElementById("main-svg") || document.getElementById("content");
+        target?.scrollIntoView({ behavior: "smooth", block: "start" });
+        this.selectVehicle(row.name);
     }
 
     private byId(id: string): HTMLElement {
