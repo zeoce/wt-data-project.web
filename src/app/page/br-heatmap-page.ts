@@ -7,6 +7,8 @@ import * as d3 from "d3";
 import { BRRange, Clazz, Measurement, Mode } from "../options";
 import { Localization } from "../config";
 import { Checkbox, ColorblindCheckbox } from "../sidebar/checkbox";
+import { Application } from "../application";
+import { GroundRbPanel } from "../ground-rb-panel";
 
 
 @Singleton(BRHeatMapPage)
@@ -19,6 +21,7 @@ export class BRHeatMapPage extends Page {
     update(): void {
         // remove old plot
         this.removeOld();
+        new GroundRbPanel(Application.metadata).render(document.getElementById("content"));
         // add date selection
         Container.get<Select>(DateSelect).init();
         // add class selection
