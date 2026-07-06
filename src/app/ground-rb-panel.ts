@@ -31,6 +31,33 @@ type SourceInfo = {
     latestJoined: Metadata;
 };
 
+type VehicleImage = {
+    imageUrl: string;
+    sourcePage: string;
+    sourceFileTitle: string;
+    sourceUrl: string;
+    attribution: string;
+    matchedBy: string;
+    confidence: "high" | "medium" | "low";
+};
+
+type VehicleImageManifest = {
+    generatedAt: string;
+    source: {
+        name: string;
+        groundPage: string;
+        cdn: string;
+        note: string;
+    };
+    images: { [name: string]: VehicleImage };
+    misses: Array<{ id: string; name: string; reason: string }>;
+    stats: {
+        totalGroundVehicles: number;
+        matched: number;
+        fallbacks: number;
+    };
+};
+
 type Filters = {
     nation: string;
     brMin: number;
@@ -53,6 +80,7 @@ export class GroundRbPanel {
     private rows: JoinedRow[] = [];
     private metadata: Metadata[];
     private sourceInfo: SourceInfo | null = null;
+    private imageManifest: VehicleImageManifest | null = null;
     private selected: JoinedRow | null = null;
     private compareNames: string[] = [];
     private favorites: string[] = [];
@@ -85,6 +113,7 @@ export class GroundRbPanel {
                 fetch("data/source-info.json").then(response => this.requireOk(response, "data/source-info.json")).then(response => response.json())
             ]);
             this.sourceInfo = sourceInfo;
+            this.imageManifest = await this.loadImageManifest();
             this.rows = this.parseCsv(csv)
                 .filter(row => row.cls === "Ground_vehicles")
                 .filter(row => this.toNumber(row.rb_battles) > 0);
@@ -189,7 +218,7 @@ export class GroundRbPanel {
                 <h3>Data, Source, And License</h3>
                 <p>Fork source: <a href="${this.sourceInfo.forkRepo}">zeoce/wt-data-project.web</a>. Upstream web: <a href="${this.sourceInfo.upstreamWebRepo}">ControlNet/wt-data-project.web</a>. Upstream data: <a href="${this.sourceInfo.upstreamDataRepo}">ControlNet/wt-data-project.data</a>.</p>
                 <p>This AGPL project keeps source availability and upstream attribution visible. Thunderskill-derived data is sample-based, and joined vehicle matching may contain errors. Treat low-sample rows as directional, not definitive.</p>
-                <p>Vehicle cards use local placeholder art because the current joined and wk data snapshots do not include safe image URLs, thumbnails, ranks, or finer vehicle-type fields. Ground frags and deaths on cards are estimates derived from battles and per-battle/per-death rates.</p>
+                <p>${this.imageSourceCopy()} Ground frags and deaths on cards are estimates derived from battles and per-battle/per-death rates.</p>
                 <p>Prepared: ${this.formatDate(this.sourceInfo.generatedAt)}. Latest data date: ${latest ? this.escape(latest.date) : "N/A"}.</p>
             </aside>
         `;
@@ -329,10 +358,7 @@ export class GroundRbPanel {
         const lowSample = this.toNumber(row.rb_battles) < minBattles * 2;
         return `
             <article class="vehicle-card${lowSample ? " low-sample-card" : ""}" data-nation="${this.escape(row.nation)}">
-                <div class="vehicle-art" aria-hidden="true">
-                    <div class="vehicle-art-mark">${this.escape(row.nation.slice(0, 3).toUpperCase())}</div>
-                    <div class="vehicle-art-name">${this.formatValue(row.rb_br)}</div>
-                </div>
+                ${this.vehicleArt(row)}
                 <div class="vehicle-card-body">
                     <h3>${this.displayName(row)}</h3>
                     <div class="badge-row">
@@ -567,6 +593,16 @@ export class GroundRbPanel {
         return response;
     }
 
+    private async loadImageManifest(): Promise<VehicleImageManifest | null> {
+        try {
+            const response = await fetch("data/vehicle-images.json");
+            if (!response.ok) return null;
+            return await response.json();
+        } catch {
+            return null;
+        }
+    }
+
     private readList(key: string): string[] {
         try {
             const value = JSON.parse(localStorage.getItem(key) || "[]");
@@ -599,6 +635,46 @@ export class GroundRbPanel {
 
     private stat(label: string, value: string): string {
         return `<div><dt>${label}</dt><dd>${this.formatValue(value)}</dd></div>`;
+    }
+
+    private vehicleArt(row: JoinedRow): string {
+        const image = this.vehicleImage(row);
+        const placeholder = `
+            <div class="vehicle-art-placeholder" aria-hidden="true">
+                <div class="vehicle-art-mark">${this.escape(row.nation.slice(0, 3).toUpperCase())}</div>
+                <div class="vehicle-art-name">${this.formatValue(row.rb_br)}</div>
+            </div>
+        `;
+        if (!image) {
+            return `<div class="vehicle-art">${placeholder}</div>`;
+        }
+        return `
+            <div class="vehicle-art has-image">
+                <img src="${this.escape(image.imageUrl)}" alt="${this.displayName(row)} vehicle image" loading="lazy" onerror="this.closest('.vehicle-art').classList.add('image-failed'); this.remove();">
+                <div class="vehicle-art-overlay" aria-hidden="true"></div>
+                <div class="vehicle-art-badges" aria-hidden="true">
+                    <span>${this.escape(row.nation)}</span>
+                    <span>BR ${this.formatValue(row.rb_br)}</span>
+                    ${this.isPremium(row) ? "<span class=\"premium-badge\">Premium</span>" : ""}
+                </div>
+                ${placeholder}
+            </div>
+        `;
+    }
+
+    private vehicleImage(row: JoinedRow): VehicleImage | null {
+        if (!this.imageManifest || !this.imageManifest.images) return null;
+        const image = this.imageManifest.images[row.name] || this.imageManifest.images[row.wk_name];
+        if (!image || image.confidence !== "high") return null;
+        return image;
+    }
+
+    private imageSourceCopy(): string {
+        if (!this.imageManifest) {
+            return "Vehicle image manifest is optional and was not loaded, so cards fall back to local placeholder panels.";
+        }
+        const source = this.imageManifest.source;
+        return `Vehicle card images are best-effort remote thumbnails from <a href="${this.escape(source.groundPage)}">${this.escape(source.name)}</a> / <a href="${this.escape(source.cdn)}">official wiki CDN</a>; ${this.escape(String(this.imageManifest.stats.matched))} matched and ${this.escape(String(this.imageManifest.stats.fallbacks))} use placeholders. Matching is based on joined vehicle ids and can miss renamed or unavailable vehicles. Images are referenced remotely rather than copied into this AGPL repository.`;
     }
 
     private typeLabel(row: JoinedRow): string {

@@ -54,7 +54,7 @@ Recommended Pages settings:
 | Build output directory | `dist` |
 | Node.js version | `20` from `.node-version` |
 
-The build command runs `prepare:data` first, then webpack in production mode, and emits the static app into `dist/`. The checked-in `wasm-utils/pkg/wasm_utils.js` package provides the data filtering helper, so Cloudflare Pages does not need a Rust toolchain. If a generated `.wasm` file is added to `wasm-utils/pkg/` later, webpack will copy it into the Pages artifact. The `wrangler.toml` file sets `pages_build_output_dir = "dist"` so Wrangler and Cloudflare Pages use the same output directory.
+The build command runs `prepare:data`, prepares the optional vehicle image manifest, then webpack in production mode, and emits the static app into `dist/`. The checked-in `wasm-utils/pkg/wasm_utils.js` package provides the data filtering helper, so Cloudflare Pages does not need a Rust toolchain. If a generated `.wasm` file is added to `wasm-utils/pkg/` later, webpack will copy it into the Pages artifact. The `wrangler.toml` file sets `pages_build_output_dir = "dist"` so Wrangler and Cloudflare Pages use the same output directory.
 
 Cloudflare Pages should deploy the generated `dist/` directory. Do not use the legacy `web` branch force-push workflow from the upstream project.
 
@@ -63,16 +63,20 @@ Cloudflare Pages should deploy the generated `dist/` directory. Do not use the l
 ```sh
 npm ci
 npm run prepare:data
+npm run prepare:images
 npm run build:production
 npm run check:dist
 ```
 
 `prepare:data` downloads upstream metadata from `ControlNet/wt-data-project.data`, writes `public/data/metadata.json`, and writes the latest joined CSV to `public/data/latest-joined.csv`. Webpack copies these files into `dist/data/`, so the deployed app can load `/data/metadata.json` and show an in-app data status.
 
+`prepare:images` builds `public/data/vehicle-images.json` from the official War Thunder Wiki Ground Vehicles page and its official CDN slot thumbnails. The manifest stores remote thumbnail URLs and source metadata; it does not download or redistribute image files. Set `WT_DISABLE_IMAGE_FETCH=1` before running the script if the wiki endpoint is down or you need an offline build. Missing or disabled image matches fall back to the local placeholder art in the card gallery.
+
 ### Cloudflare Pages Troubleshooting
 
 - Blank app shell: confirm `dist/index.html`, `dist/bundle.js`, `dist/index.css`, and `dist/config/params.json` are present and served with the expected content types.
 - Missing data status or Ground RB panel error: confirm `dist/data/metadata.json`, `dist/data/latest-joined.csv`, and `dist/data/source-info.json` exist. Run `npm run prepare:data` before building.
+- Missing vehicle card images: confirm `dist/data/vehicle-images.json` exists. Run `npm run prepare:images`, or set `WT_DISABLE_IMAGE_FETCH=1` to intentionally build with placeholders.
 - Custom domain issue: in Cloudflare DNS, `wt.mealspin.ca` should be a proxied `CNAME` to the Pages project domain, and the Pages project should list `wt.mealspin.ca` as an active custom domain.
 - Stale blank page after a fix: hard refresh the browser or purge Cloudflare cache for `bundle.js`.
 - Cloudflare build command: keep `npm run build:pages`; the npm `prebuild:pages` hook prepares data automatically.
@@ -87,7 +91,7 @@ This fork preserves upstream attribution and AGPL source availability:
 
 The app displays the prepared data date from `/data/metadata.json`. Thunderskill-derived data is sample-based, and joined data may contain imperfect vehicle matching, so low-sample rows should be treated as directional rather than definitive.
 
-The Ground RB card gallery uses generated placeholder panels for vehicles. The current upstream `joined` and `wk` CSV snapshots do not include safe vehicle image URLs, thumbnails, rank fields, or finer vehicle-type labels. If a future data-preparation pipeline adds licensed image URLs or local attributed assets, the card image area can be wired to that source.
+The Ground RB card gallery uses `public/data/vehicle-images.json` for best-effort vehicle thumbnails from the official War Thunder Wiki and `static.encyclopedia.warthunder.com` CDN. The manifest is generated from official wiki unit ids and stores remote URLs, source pages, source file names, match confidence, and attribution notes. The app only displays high-confidence matches. Missing, disabled, or failed images fall back to generated placeholder panels. The current upstream `joined` and `wk` CSV snapshots still do not include rank fields or finer vehicle-type labels.
 
 ## Features
 

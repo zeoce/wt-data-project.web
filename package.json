@@ -2,9 +2,10 @@
   "scripts": {
     "build": "webpack",
     "prepare:data": "node scripts/prepare-data.js",
-    "prebuild:pages": "npm run prepare:data",
+    "prepare:images": "node scripts/prepare-vehicle-images.mjs",
+    "prebuild:pages": "npm run prepare:data && npm run prepare:images",
     "build:pages": "webpack --config webpack.config.js --mode production",
-    "prebuild:production": "npm run prepare:data",
+    "prebuild:production": "npm run prepare:data && npm run prepare:images",
     "build:production": "webpack -c webpack.prod.js --mode production",
     "check:dist": "node scripts/check-dist.js",
     "watch": "webpack --watch",
