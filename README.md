@@ -87,6 +87,8 @@ This fork preserves upstream attribution and AGPL source availability:
 
 The app displays the prepared data date from `/data/metadata.json`. Thunderskill-derived data is sample-based, and joined data may contain imperfect vehicle matching, so low-sample rows should be treated as directional rather than definitive.
 
+The Ground RB card gallery uses generated placeholder panels for vehicles. The current upstream `joined` and `wk` CSV snapshots do not include safe vehicle image URLs, thumbnails, rank fields, or finer vehicle-type labels. If a future data-preparation pipeline adds licensed image URLs or local attributed assets, the card image area can be wired to that source.
+
 ## Features
 
 Mouse tooltip in heatmap.
