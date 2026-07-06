@@ -39,7 +39,8 @@ module.exports = {
       patterns: [
         { from: "wasm-utils/pkg/*.wasm", to: "[name][ext]", noErrorOnMissing: true }, // copy optional WASM binary
         { from: "img",                  to: "img" },         // copy images
-        { from: "public",               to: "." }            // copy Cloudflare Pages metadata
+        { from: "public",               to: "." },           // copy Cloudflare Pages metadata
+        { from: "CNAME",                to: "." }            // copy custom-domain hint for static hosts
       ]
     })
   ],

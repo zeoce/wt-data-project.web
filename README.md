@@ -25,7 +25,7 @@ A visualization web application for wt-data-project.
             <img src="https://img.shields.io/github/stars/ControlNet/wt-data-project.web?style=flat-square" alt="">
             <img src="https://img.shields.io/github/last-commit/ControlNet/wt-data-project.web?style=flat-square" alt="">
             <img src="https://img.shields.io/github/actions/workflow/status/ControlNet/wt-data-project.web/build.yaml?style=flat-square" alt="">
-            <img src="https://img.shields.io/website?style=flat-square&up_message=online&url=https%3A%2F%2Fwt.controlnet.space" alt="">
+            <img src="https://img.shields.io/website?style=flat-square&up_message=online&url=https%3A%2F%2Fwt.mealspin.ca" alt="">
         </td>
     </tr>
     <tr>
@@ -38,7 +38,7 @@ A visualization web application for wt-data-project.
     </tr>
 </table>
 
-## Webpage: [wt.controlnet.space](https://wt.controlnet.space)
+## Webpage: [wt.mealspin.ca](https://wt.mealspin.ca)
 
 ## Cloudflare Pages
 
