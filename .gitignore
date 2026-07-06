@@ -100,4 +100,3 @@ node_modules
 *.ipynb
 dist
 /data
-package-lock.json

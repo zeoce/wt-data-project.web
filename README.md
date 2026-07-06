@@ -40,6 +40,24 @@ A visualization web application for wt-data-project.
 
 ## Webpage: [wt.controlnet.space](https://wt.controlnet.space)
 
+## Cloudflare Pages
+
+This fork is prepared for Cloudflare Pages deployment.
+
+Recommended Pages settings:
+
+| Setting | Value |
+| --- | --- |
+| Production branch | `main` |
+| Install command | `npm ci` |
+| Build command | `npm run build:pages` |
+| Build output directory | `dist` |
+| Node.js version | `20` from `.node-version` |
+
+The build command runs webpack in production mode and emits the static app into `dist/`. The checked-in `wasm-utils/pkg/wasm_utils.js` package provides the data filtering helper, so Cloudflare Pages does not need a Rust toolchain. If a generated `.wasm` file is added to `wasm-utils/pkg/` later, webpack will copy it into the Pages artifact. The `wrangler.toml` file sets `pages_build_output_dir = "dist"` so Wrangler and Cloudflare Pages use the same output directory.
+
+Cloudflare Pages should deploy the generated `dist/` directory. Do not use the legacy `web` branch force-push workflow from the upstream project.
+
 ## Features
 
 Mouse tooltip in heatmap.
