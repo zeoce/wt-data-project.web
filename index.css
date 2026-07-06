@@ -636,6 +636,55 @@ input:focus-visible{
   letter-spacing:.01em;
 }
 
+.ground-rb-results th{
+  white-space:nowrap;
+}
+
+.ground-rb-results .table-sort-button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:5px;
+  width:100%;
+  min-height:auto;
+  padding:2px 4px;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:inherit;
+  letter-spacing:inherit;
+  box-shadow:none;
+  cursor:pointer;
+}
+
+.ground-rb-results .table-sort-button:hover,
+.ground-rb-results .table-sort-button:focus-visible{
+  transform:none;
+  border-color:transparent;
+  background:color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow:none;
+}
+
+.ground-rb-results .table-sort-button:focus-visible{
+  outline:2px solid var(--accent-soft);
+  outline-offset:2px;
+}
+
+.ground-rb-results .table-sort-button.is-active{
+  color:var(--accent-strong);
+}
+
+.sort-indicator{
+  display:inline-block;
+  min-width:1em;
+  color:var(--accent-strong);
+  font-size:.82em;
+  line-height:1;
+  text-align:center;
+}
+
 .ground-rb-results td,
 .compare-table td{
   padding:10px 9px;

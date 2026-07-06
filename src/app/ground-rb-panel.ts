@@ -79,10 +79,21 @@ type Filters = {
 const STORAGE_RECENT = "wt-ground-rb-recent-searches";
 const STORAGE_FAVORITES = "wt-ground-rb-favorites";
 const STORAGE_COMPARE = "wt-ground-rb-compare";
+const STORAGE_TABLE_SORT = "wt-ground-rb-table-sort";
 const CARD_PAGE_SIZE = 50;
 
 type SortMode = "win" | "played" | "gkd" | "gkb" | "brAsc" | "brDesc" | "name";
 type ViewMode = "card" | "table";
+type SortDirection = "asc" | "desc";
+type TableSortKey = "vehicle" | "nation" | "br" | "rank" | "win" | "battles" | "gkb" | "gkd" | "premium";
+type TableSort = {
+    key: TableSortKey;
+    direction: SortDirection;
+};
+type RankedRow = {
+    row: JoinedRow;
+    resultRank: number;
+};
 
 export class GroundRbPanel {
     private root: HTMLElement;
@@ -96,6 +107,7 @@ export class GroundRbPanel {
     private recentSearches: string[] = [];
     private currentSort: SortMode = "win";
     private currentView: ViewMode = "card";
+    private tableSort: TableSort | null = null;
     private visibleCards = CARD_PAGE_SIZE;
 
     constructor(metadata: Metadata[]) {
@@ -103,6 +115,7 @@ export class GroundRbPanel {
         this.compareNames = this.readList(STORAGE_COMPARE);
         this.favorites = this.readList(STORAGE_FAVORITES);
         this.recentSearches = this.readList(STORAGE_RECENT);
+        this.tableSort = this.readTableSort();
     }
 
     render(parent: HTMLElement): void {
@@ -213,7 +226,16 @@ export class GroundRbPanel {
                 <table class="ground-rb-results" aria-label="Ground RB vehicle results">
                     <thead>
                         <tr>
-                            <th>Vehicle</th><th>Nation</th><th>BR</th><th>Rank</th><th>Win</th><th>Battles</th><th>G/K</th><th>G/D</th><th>Premium</th><th></th>
+                            ${this.tableHeader("vehicle", "Vehicle")}
+                            ${this.tableHeader("nation", "Nation")}
+                            ${this.tableHeader("br", "BR")}
+                            ${this.tableHeader("rank", "Rank")}
+                            ${this.tableHeader("win", "Win")}
+                            ${this.tableHeader("battles", "Battles")}
+                            ${this.tableHeader("gkb", "G/K")}
+                            ${this.tableHeader("gkd", "G/D")}
+                            ${this.tableHeader("premium", "Premium")}
+                            <th aria-label="Actions"></th>
                         </tr>
                     </thead>
                     <tbody id="ground-results"></tbody>
@@ -250,6 +272,7 @@ export class GroundRbPanel {
             this.visibleCards += CARD_PAGE_SIZE;
             this.updateResults();
         });
+        this.bindTableHeaderSort();
 
         this.byId("preset-win").addEventListener("click", () => this.applyPreset("win"));
         this.byId("preset-played").addEventListener("click", () => this.applyPreset("played"));
@@ -261,6 +284,31 @@ export class GroundRbPanel {
         if (copyButton) {
             copyButton.addEventListener("click", () => this.copyComparison());
         }
+    }
+
+    private bindTableHeaderSort(): void {
+        Array.prototype.forEach.call(this.root.querySelectorAll("[data-table-sort]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => {
+                const key = button.getAttribute("data-table-sort") as TableSortKey;
+                this.setTableSort(key);
+            });
+        });
+    }
+
+    private setTableSort(key: TableSortKey): void {
+        if (this.tableSort && this.tableSort.key === key) {
+            this.tableSort = {
+                key,
+                direction: this.tableSort.direction === "asc" ? "desc" : "asc"
+            };
+        } else {
+            this.tableSort = {
+                key,
+                direction: this.defaultTableSortDirection(key)
+            };
+        }
+        localStorage.setItem(STORAGE_TABLE_SORT, JSON.stringify(this.tableSort));
+        this.updateResults();
     }
 
     private setView(view: ViewMode): void {
@@ -307,10 +355,37 @@ export class GroundRbPanel {
             case "brDesc":
                 return this.toNumber(b.rb_br) - this.toNumber(a.rb_br);
             case "name":
-                return this.displayName(a).localeCompare(this.displayName(b));
+                return this.rawDisplayName(a).localeCompare(this.rawDisplayName(b));
             case "win":
             default:
                 return this.toNumber(b.rb_win_rate) - this.toNumber(a.rb_win_rate);
+        }
+    }
+
+    private compareTableRows(a: RankedRow, b: RankedRow): number {
+        if (!this.tableSort) return 0;
+        const direction = this.tableSort.direction;
+        switch (this.tableSort.key) {
+            case "vehicle":
+                return this.compareValues(this.rawDisplayName(a.row), this.rawDisplayName(b.row), direction);
+            case "nation":
+                return this.compareValues(a.row.nation, b.row.nation, direction);
+            case "br":
+                return this.compareValues(this.toNullableNumber(a.row.rb_br), this.toNullableNumber(b.row.rb_br), direction);
+            case "rank":
+                return this.compareValues(a.resultRank, b.resultRank, direction);
+            case "win":
+                return this.compareValues(this.toNullableNumber(a.row.rb_win_rate), this.toNullableNumber(b.row.rb_win_rate), direction);
+            case "battles":
+                return this.compareValues(this.toNullableNumber(a.row.rb_battles), this.toNullableNumber(b.row.rb_battles), direction);
+            case "gkb":
+                return this.compareValues(this.toNullableNumber(a.row.rb_ground_frags_per_battle), this.toNullableNumber(b.row.rb_ground_frags_per_battle), direction);
+            case "gkd":
+                return this.compareValues(this.toNullableNumber(a.row.rb_ground_frags_per_death), this.toNullableNumber(b.row.rb_ground_frags_per_death), direction);
+            case "premium":
+                return this.compareValues(this.isPremium(a.row) ? 1 : 0, this.isPremium(b.row) ? 1 : 0, direction);
+            default:
+                return 0;
         }
     }
 
@@ -324,10 +399,15 @@ export class GroundRbPanel {
             .filter(row => this.matchesQuery(row, filters.query));
 
         results = results.sort((a, b) => this.compareRows(a, b));
+        const rankedResults = results.map((row, index) => ({ row, resultRank: index + 1 }));
+        const tableResults = this.tableSort
+            ? rankedResults.slice().sort((a, b) => this.compareTableRows(a, b))
+            : rankedResults;
         this.byId("result-count").textContent = `${results.length} vehicles`;
+        this.updateTableSortHeaders();
 
         const tbody = this.byId("ground-results");
-        tbody.innerHTML = results.slice(0, 100).map((row, index) => this.resultRow(row, filters.minBattles, index + 1)).join("");
+        tbody.innerHTML = tableResults.slice(0, 100).map(item => this.resultRow(item.row, filters.minBattles, item.resultRank)).join("");
         Array.prototype.forEach.call(tbody.querySelectorAll("[data-select]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-select")));
         });
@@ -335,10 +415,10 @@ export class GroundRbPanel {
             button.addEventListener("click", () => this.toggleCompare(button.getAttribute("data-compare")));
         });
 
-        const visible = results.slice(0, this.visibleCards);
-        this.byId("ground-card-view").innerHTML = visible.map((row, index) => this.vehicleCard(row, filters.minBattles, index + 1)).join("");
+        const visible = rankedResults.slice(0, this.visibleCards);
+        this.byId("ground-card-view").innerHTML = visible.map(item => this.vehicleCard(item.row, filters.minBattles, item.resultRank)).join("");
         this.bindCardButtons(this.byId("ground-card-view"));
-        this.debugVisibleImages(visible);
+        this.debugVisibleImages(visible.map(item => item.row));
         (this.byId("show-more-cards") as HTMLButtonElement).hidden = results.length <= this.visibleCards || this.currentView !== "card";
     }
 
@@ -622,9 +702,37 @@ export class GroundRbPanel {
         }
     }
 
+    private readTableSort(): TableSort | null {
+        try {
+            const value = JSON.parse(localStorage.getItem(STORAGE_TABLE_SORT) || "null");
+            const keys: TableSortKey[] = ["vehicle", "nation", "br", "rank", "win", "battles", "gkb", "gkd", "premium"];
+            if (!value || keys.indexOf(value.key) < 0 || (value.direction !== "asc" && value.direction !== "desc")) {
+                return null;
+            }
+            return value as TableSort;
+        } catch {
+            return null;
+        }
+    }
+
     private nationOptions(): Array<[string, string]> {
         const nations = this.metadata ? ["all", "USA", "Germany", "USSR", "Britain", "Japan", "France", "Italy", "China", "Sweden", "Israel"] : ["all"];
         return nations.map(nation => [nation, nation === "all" ? "All nations" : nation]);
+    }
+
+    private tableHeader(key: TableSortKey, label: string): string {
+        const active = this.tableSort && this.tableSort.key === key;
+        const direction = active ? this.tableSort.direction : null;
+        const ariaSort = direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "none";
+        const indicator = direction === "asc" ? "▲" : direction === "desc" ? "▼" : "";
+        return `
+            <th data-sort-key="${key}" aria-sort="${ariaSort}">
+                <button type="button" class="table-sort-button${active ? " is-active" : ""}" data-table-sort="${key}">
+                    <span>${label}</span>
+                    <span class="sort-indicator" aria-hidden="true">${indicator}</span>
+                </button>
+            </th>
+        `;
     }
 
     private button(id: string, text: string): string {
@@ -754,8 +862,49 @@ export class GroundRbPanel {
         return this.root.querySelector(`#${id}`) as HTMLElement;
     }
 
+    private updateTableSortHeaders(): void {
+        Array.prototype.forEach.call(this.root.querySelectorAll("[data-sort-key]"), (header: HTMLTableCellElement) => {
+            const key = header.getAttribute("data-sort-key") as TableSortKey;
+            const button = header.querySelector(".table-sort-button");
+            const indicator = header.querySelector(".sort-indicator");
+            const active = this.tableSort && this.tableSort.key === key;
+            const direction = active ? this.tableSort.direction : null;
+            header.setAttribute("aria-sort", direction === "asc" ? "ascending" : direction === "desc" ? "descending" : "none");
+            if (button) button.classList.toggle("is-active", Boolean(active));
+            if (indicator) indicator.textContent = direction === "asc" ? "▲" : direction === "desc" ? "▼" : "";
+        });
+    }
+
+    private defaultTableSortDirection(key: TableSortKey): SortDirection {
+        return key === "vehicle" || key === "nation" || key === "br" || key === "rank" ? "asc" : "desc";
+    }
+
+    private compareValues(a: string | number | null, b: string | number | null, direction: SortDirection): number {
+        const aMissing = this.isMissing(a);
+        const bMissing = this.isMissing(b);
+        if (aMissing && bMissing) return 0;
+        if (aMissing) return 1;
+        if (bMissing) return -1;
+
+        let result = 0;
+        if (typeof a === "string" || typeof b === "string") {
+            result = String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+        } else {
+            result = a < b ? -1 : a > b ? 1 : 0;
+        }
+        return direction === "asc" ? result : -result;
+    }
+
+    private isMissing(value: string | number | null): boolean {
+        return value === null || value === undefined || value === "" || (typeof value === "number" && isNaN(value));
+    }
+
+    private rawDisplayName(row: JoinedRow): string {
+        return (row.alt_name || row.wk_name || row.name).replace(/_/g, " ");
+    }
+
     private displayName(row: JoinedRow): string {
-        return this.escape((row.alt_name || row.wk_name || row.name).replace(/_/g, " "));
+        return this.escape(this.rawDisplayName(row));
     }
 
     private isPremium(row: JoinedRow): boolean {
@@ -765,6 +914,12 @@ export class GroundRbPanel {
     private toNumber(value: string): number {
         const parsed = parseFloat(value);
         return isNaN(parsed) ? 0 : parsed;
+    }
+
+    private toNullableNumber(value: string): number | null {
+        if (value === "" || value === undefined || value === null) return null;
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? null : parsed;
     }
 
     private formatValue(value: string): string {
