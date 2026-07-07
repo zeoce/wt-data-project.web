@@ -64,6 +64,26 @@ div#sidebar label{
   top:0;
   background:var(--bg);
   z-index:3;
+  transition: max-width 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+}
+
+#sidebar.collapsed {
+  flex: 0 0 0px;
+  max-width: 0px;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-toggle-btn {
+  position: sticky;
+  top: 10px;
+  margin: 10px;
+  z-index: 10;
+  white-space: nowrap;
+  height: fit-content;
+  align-self: flex-start;
 }
 
 #sidebar label{
@@ -194,6 +214,41 @@ ul#navbar>li>a#todo-list{ color:#F07178; }
   display:flex;
   flex-wrap:wrap;
   gap:8px;
+}
+
+.memory-chip {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.memory-chip button {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+.memory-chip .remove-chip {
+  border-left: 1px solid var(--border);
+  padding: 8px 6px;
+  background: var(--bg);
+  color: var(--muted);
+}
+.memory-chip .remove-chip:hover {
+  background: var(--row-hover);
+  color: var(--warn);
+}
+
+.clear-memory {
+  border: none;
+  background: none;
+  color: var(--muted);
+  text-decoration: underline;
+  padding: 8px;
+}
+.clear-memory:hover {
+  color: var(--text);
 }
 
 button,
@@ -483,6 +538,19 @@ ul#navbar>li>label:hover{
   border:1px solid var(--border);
   border-radius:var(--radius);
   box-shadow:var(--shadow);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+#sidebar.collapsed {
+  flex: 0 0 0px;
+  max-width: 0px;
+  padding: 0;
+  margin-left: 0;
+  margin-right: 0;
+  opacity: 0;
+  border-width: 0;
+  pointer-events: none;
 }
 
 body:not(.dark-mode) #sidebar{
@@ -1255,24 +1323,6 @@ body:not(.dark-mode) .vehicle-card{
   color:#ffd86b;
 }
 
-.status-row{
-  min-height:28px;
-  margin-bottom:10px;
-}
-
-.status-row .premium-badge{
-  display:inline-flex;
-  align-items:center;
-  min-height:24px;
-  border:1px solid rgba(255,203,107,.32);
-  border-radius:999px;
-  background:rgba(255,203,107,.14);
-  color:#ffd86b;
-  padding:3px 8px;
-  font-size:.78rem;
-  font-weight:850;
-}
-
 .stat-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -1348,8 +1398,8 @@ body.modal-open{
   overflow:hidden;
 }
 
-.vehicle-image-modal[hidden]{
-  display:none;
+[hidden] {
+  display: none !important;
 }
 
 .vehicle-image-modal{

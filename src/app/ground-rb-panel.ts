@@ -107,7 +107,7 @@ export class GroundRbPanel {
     private compareNames: string[] = [];
     private favorites: string[] = [];
     private recentSearches: string[] = [];
-    private currentSort: SortMode = "win";
+    private currentSort: SortMode = "gkd";
     private currentView: ViewMode = "card";
     private tableSort: TableSort | null = null;
     private visibleCards = CARD_PAGE_SIZE;
@@ -187,14 +187,14 @@ export class GroundRbPanel {
                 </div>
                 <div class="filter-grid">
                     ${this.select("ground-nation", "Nation", this.nationOptions())}
-                    ${this.numberInput("ground-br-min", "BR min", "1", "13.7", "0.3", "1")}
+                    ${this.numberInput("ground-br-min", "BR min", "0", "13.7", "0.3", "0")}
                     ${this.numberInput("ground-br-max", "BR max", "1", "13.7", "0.3", "13.7")}
                     ${this.select("ground-premium", "Premium", [
                         ["all", "All"],
                         ["premium", "Premium"],
                         ["regular", "Non-premium"]
                     ])}
-                    ${this.numberInput("ground-min-battles", "Min battles", "0", "100000", "100", "1000")}
+                    ${this.numberInput("ground-min-battles", "Min battles", "0", "100000", "100", "500")}
                     <label class="search-label">Vehicle search
                         <input id="ground-search" type="search" placeholder="XM1, Leopard 2, T-80..." autocomplete="off" aria-label="Search vehicles">
                     </label>
@@ -207,10 +207,10 @@ export class GroundRbPanel {
             <div class="results-toolbar" aria-label="Vehicle result display controls">
                 <label>Sort
                     ${this.selectBare("ground-sort", [
+                        ["gkd", "Frags per death descending"],
                         ["win", "Win rate descending"],
                         ["played", "Battles descending"],
-                        ["gkd", "Ground kills per death descending"],
-                        ["gkb", "Ground kills per battle descending"],
+                        ["gkb", "Frags per battle descending"],
                         ["brAsc", "BR ascending"],
                         ["brDesc", "BR descending"],
                         ["name", "Name A-Z"]
@@ -225,6 +225,10 @@ export class GroundRbPanel {
             <div id="ground-card-view" class="ground-card-view"></div>
             <div class="card-more-wrap"><button type="button" id="show-more-cards">Show more</button></div>
             <div id="ground-table-view" class="ground-rb-results-wrap" hidden>
+                <div class="table-legend" style="margin-bottom: 8px; font-size: 0.9em; color: var(--muted);">
+                    <span style="display: inline-block; width: 12px; height: 12px; background: color-mix(in srgb, var(--warn) 80%, transparent); margin-right: 4px; border-radius: 2px; vertical-align: middle;"></span>
+                    Gold rows indicate vehicles with low sample size (battles &lt; 2 &times; min battles).
+                </div>
                 <table class="ground-rb-results" aria-label="Ground RB vehicle results">
                     <thead>
                         <tr>
@@ -234,8 +238,8 @@ export class GroundRbPanel {
                             ${this.tableHeader("rank", "Rank")}
                             ${this.tableHeader("win", "Win")}
                             ${this.tableHeader("battles", "Battles")}
-                            ${this.tableHeader("gkb", "G/K")}
-                            ${this.tableHeader("gkd", "G/D")}
+                            ${this.tableHeader("gkb", "Frags / battle")}
+                            ${this.tableHeader("gkd", "Frags / death")}
                             ${this.tableHeader("premium", "Premium")}
                             <th aria-label="Actions"></th>
                         </tr>
@@ -457,10 +461,10 @@ export class GroundRbPanel {
                 <td>${this.escape(row.nation)}</td>
                 <td>${this.formatValue(row.rb_br)}</td>
                 <td>#${rank}</td>
-                <td>${this.formatValue(row.rb_win_rate)}%</td>
-                <td>${this.formatValue(row.rb_battles)}</td>
-                <td>${this.formatValue(row.rb_ground_frags_per_battle)}</td>
-                <td>${this.formatValue(row.rb_ground_frags_per_death)}</td>
+                <td>${this.formatPercentage(row.rb_win_rate)}</td>
+                <td>${this.formatCount(row.rb_battles)}</td>
+                <td>${this.formatRatio(row.rb_ground_frags_per_battle)}</td>
+                <td>${this.formatRatio(row.rb_ground_frags_per_death)}</td>
                 <td>${this.isPremium(row) ? "Yes" : "No"}</td>
                 <td><button type="button" data-compare="${this.escape(row.name)}">${compared ? "Remove" : "Compare"}</button></td>
             </tr>
@@ -483,16 +487,15 @@ export class GroundRbPanel {
                         <span>${this.escape(this.typeLabel(row))}</span>
                         <span>Rank N/A</span>
                     </div>
-                    <div class="status-row">${this.isPremium(row) ? "<span class=\"premium-badge\">Premium</span>" : ""}</div>
                     <dl class="stat-grid">
-                        ${this.stat("Battles", row.rb_battles)}
-                        ${this.stat("Win rate", `${this.formatValue(row.rb_win_rate)}%`)}
-                        ${this.stat("Ground frags", this.estimatedGroundFrags(row))}
-                        ${this.stat("Deaths", this.estimatedDeaths(row))}
-                        ${this.stat("Frags / battle", row.rb_ground_frags_per_battle)}
-                        ${this.stat("Frags / death", row.rb_ground_frags_per_death)}
-                        ${this.stat("SL / game", row.rb_sl_rate)}
-                        ${this.stat("RP / game", row.rb_rp_rate)}
+                        ${this.stat("Battles", this.formatCount(row.rb_battles))}
+                        ${this.stat("Win rate", this.formatPercentage(row.rb_win_rate))}
+                        ${this.stat("Ground frags", this.formatCount(this.estimatedGroundFrags(row)))}
+                        ${this.stat("Deaths", this.formatCount(this.estimatedDeaths(row)))}
+                        ${this.stat("Frags / battle", this.formatRatio(row.rb_ground_frags_per_battle))}
+                        ${this.stat("Frags / death", this.formatRatio(row.rb_ground_frags_per_death))}
+                        ${this.stat("SL / game", this.formatCount(row.rb_sl_rate))}
+                        ${this.stat("RP / game", this.formatCount(row.rb_rp_rate))}
                     </dl>
                     <div class="card-caveat-row">${lowSample ? "<p class=\"card-caveat\">Low sample: treat cautiously.</p>" : ""}</div>
                     <div class="card-actions">
@@ -565,11 +568,11 @@ export class GroundRbPanel {
                 <dt>Nation</dt><dd>${this.escape(row.nation)}</dd>
                 <dt>Class</dt><dd>${this.escape(row.cls)}</dd>
                 <dt>AB / RB / SB BR</dt><dd>${this.formatValue(row.ab_br)} / ${this.formatValue(row.rb_br)} / ${this.formatValue(row.sb_br)}</dd>
-                <dt>RB win rate</dt><dd>${this.formatValue(row.rb_win_rate)}%</dd>
-                <dt>RB battles</dt><dd>${this.formatValue(row.rb_battles)}</dd>
-                <dt>RB ground frags/battle</dt><dd>${this.formatValue(row.rb_ground_frags_per_battle)}</dd>
-                <dt>RB ground frags/death</dt><dd>${this.formatValue(row.rb_ground_frags_per_death)}</dd>
-                <dt>RB repair</dt><dd>${this.formatValue(row.rb_repair)}</dd>
+                <dt>RB win rate</dt><dd>${this.formatPercentage(row.rb_win_rate)}</dd>
+                <dt>RB battles</dt><dd>${this.formatCount(row.rb_battles)}</dd>
+                <dt>RB ground frags/battle</dt><dd>${this.formatRatio(row.rb_ground_frags_per_battle)}</dd>
+                <dt>RB ground frags/death</dt><dd>${this.formatRatio(row.rb_ground_frags_per_death)}</dd>
+                <dt>RB repair</dt><dd>${this.formatCount(row.rb_repair)}</dd>
                 <dt>Premium</dt><dd>${this.isPremium(row) ? "Yes" : "No"}</dd>
                 <dt>Source update</dt><dd>${this.sourceInfo ? this.escape(this.sourceInfo.latestJoined.date) : "N/A"}</dd>
             </dl>
@@ -596,9 +599,9 @@ export class GroundRbPanel {
             <h3>Comparison</h3>
             <div class="ground-rb-results-wrap">
                 <table class="compare-table">
-                    <thead><tr><th>Vehicle</th><th>BR</th><th>Win</th><th>Battles</th><th>G/K</th><th>G/D</th><th>Repair</th><th>Premium</th></tr></thead>
+                    <thead><tr><th>Vehicle</th><th>BR</th><th>Win</th><th>Battles</th><th>Frags / battle</th><th>Frags / death</th><th>Repair</th><th>Premium</th></tr></thead>
                     <tbody>${rows.map(row => `
-                        <tr><td>${this.displayName(row)}</td><td>${this.formatValue(row.rb_br)}</td><td>${this.formatValue(row.rb_win_rate)}%</td><td>${this.formatValue(row.rb_battles)}</td><td>${this.formatValue(row.rb_ground_frags_per_battle)}</td><td>${this.formatValue(row.rb_ground_frags_per_death)}</td><td>${this.formatValue(row.rb_repair)}</td><td>${this.isPremium(row) ? "Yes" : "No"}</td></tr>
+                        <tr><td>${this.displayName(row)}</td><td>${this.formatValue(row.rb_br)}</td><td>${this.formatPercentage(row.rb_win_rate)}</td><td>${this.formatCount(row.rb_battles)}</td><td>${this.formatRatio(row.rb_ground_frags_per_battle)}</td><td>${this.formatRatio(row.rb_ground_frags_per_death)}</td><td>${this.formatCount(row.rb_repair)}</td><td>${this.isPremium(row) ? "Yes" : "No"}</td></tr>
                     `).join("")}</tbody>
                 </table>
             </div>
@@ -612,19 +615,19 @@ export class GroundRbPanel {
             .map(name => this.rows.filter(row => row.name === name)[0])
             .filter(row => row);
         const text = rows.map(row =>
-            `${this.displayName(row)}: BR ${this.formatValue(row.rb_br)}, ${this.formatValue(row.rb_win_rate)}% WR, ${this.formatValue(row.rb_battles)} battles, ${this.formatValue(row.rb_ground_frags_per_battle)} G/K, ${this.formatValue(row.rb_ground_frags_per_death)} G/D`
+            `${this.displayName(row)}: BR ${this.formatValue(row.rb_br)}, ${this.formatPercentage(row.rb_win_rate)} WR, ${this.formatCount(row.rb_battles)} battles, ${this.formatRatio(row.rb_ground_frags_per_battle)} Frags / battle, ${this.formatRatio(row.rb_ground_frags_per_death)} Frags / death`
         ).join("\n");
         navigator.clipboard?.writeText(text);
     }
 
     private applyPreset(preset: string): void {
         (this.byId("ground-nation") as HTMLSelectElement).value = "all";
-        (this.byId("ground-br-min") as HTMLInputElement).value = "1";
+        (this.byId("ground-br-min") as HTMLInputElement).value = "0";
         (this.byId("ground-br-max") as HTMLInputElement).value = "13.7";
         (this.byId("ground-premium") as HTMLSelectElement).value = preset === "premium" ? "premium" : "all";
-        (this.byId("ground-min-battles") as HTMLInputElement).value = preset === "sample" ? "2000" : "1000";
+        (this.byId("ground-min-battles") as HTMLInputElement).value = preset === "sample" ? "2000" : "500";
         (this.byId("ground-search") as HTMLInputElement).value = "";
-        this.currentSort = preset === "played" ? "played" : preset === "frags" ? "gkb" : "win";
+        this.currentSort = preset === "played" ? "played" : preset === "frags" ? "gkb" : preset === "win" ? "win" : "gkd";
         (this.byId("ground-sort") as HTMLSelectElement).value = this.currentSort;
         this.visibleCards = CARD_PAGE_SIZE;
         this.updateResults();
@@ -659,17 +662,49 @@ export class GroundRbPanel {
     private renderMemory(): void {
         const recent = this.root.querySelector("#recent-searches");
         const favorites = this.root.querySelector("#favorite-vehicles");
-        if (recent) recent.innerHTML = this.recentSearches.slice(0, 5).map(text => `<button type="button" data-memory="${this.escape(text)}">${this.escape(text)}</button>`).join("");
+
+        let recentHtml = this.recentSearches.slice(0, 5).map(text => `
+            <span class="memory-chip">
+                <button type="button" data-memory="${this.escape(text)}">${this.escape(text)}</button>
+                <button type="button" data-remove-recent="${this.escape(text)}" aria-label="Remove ${this.escape(text)} from recent" class="remove-chip">×</button>
+            </span>
+        `).join("");
+        if (this.recentSearches.length > 0) {
+            recentHtml += `<button type="button" id="clear-recent" class="clear-memory">Clear recent</button>`;
+        }
+        if (recent) recent.innerHTML = recentHtml;
+
         if (favorites) favorites.innerHTML = this.favorites.slice(0, 8).map(name => {
             const row = this.rows.filter(item => item.name === name)[0];
             return row ? `<button type="button" data-favorite="${this.escape(row.name)}">${this.displayName(row)}</button>` : "";
         }).join("");
+
         Array.prototype.forEach.call(this.root.querySelectorAll("[data-memory]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => {
                 (this.byId("ground-search") as HTMLInputElement).value = button.getAttribute("data-memory") || "";
                 this.updateResults();
             });
         });
+        Array.prototype.forEach.call(this.root.querySelectorAll("[data-remove-recent]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const text = button.getAttribute("data-remove-recent");
+                if (text) {
+                    this.recentSearches = this.recentSearches.filter(t => t !== text);
+                    localStorage.setItem(STORAGE_RECENT, JSON.stringify(this.recentSearches));
+                    this.renderMemory();
+                }
+            });
+        });
+        const clearRecentBtn = this.root.querySelector("#clear-recent");
+        if (clearRecentBtn) {
+            clearRecentBtn.addEventListener("click", () => {
+                this.recentSearches = [];
+                localStorage.setItem(STORAGE_RECENT, JSON.stringify([]));
+                this.renderMemory();
+            });
+        }
+
         Array.prototype.forEach.call(this.root.querySelectorAll("[data-favorite]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-favorite")));
         });
@@ -811,7 +846,7 @@ export class GroundRbPanel {
     }
 
     private stat(label: string, value: string): string {
-        return `<div><dt>${label}</dt><dd>${this.formatValue(value)}</dd></div>`;
+        return `<div><dt>${label}</dt><dd>${value === "" || value === undefined || value === null ? "N/A" : this.escape(String(value))}</dd></div>`;
     }
 
     private vehicleArt(row: JoinedRow): string {
@@ -913,7 +948,7 @@ export class GroundRbPanel {
         const brRangeSelect = document.getElementById("br-range-selection") as HTMLSelectElement;
         if (classSelect) classSelect.value = "Ground_vehicles";
         if (modeSelect) modeSelect.value = "rb";
-        if (brRangeSelect) brRangeSelect.value = "1";
+        if (brRangeSelect) brRangeSelect.value = "0";
         const target = document.getElementById("main-svg") || document.getElementById("content");
         target?.scrollIntoView({ behavior: "smooth", block: "start" });
         this.selectVehicle(row.name);
@@ -985,6 +1020,27 @@ export class GroundRbPanel {
 
     private formatValue(value: string): string {
         return value === "" || value === undefined || value === null ? "N/A" : this.escape(String(value));
+    }
+
+    private formatCount(value: string | number): string {
+        if (value === "" || value === undefined || value === null) return "N/A";
+        const num = typeof value === "string" ? parseFloat(value) : value;
+        if (isNaN(num)) return "N/A";
+        return Math.round(num).toLocaleString("en-US");
+    }
+
+    private formatPercentage(value: string | number): string {
+        if (value === "" || value === undefined || value === null) return "N/A";
+        const num = typeof value === "string" ? parseFloat(value) : value;
+        if (isNaN(num)) return "N/A";
+        return `${Math.round(num)}%`;
+    }
+
+    private formatRatio(value: string | number): string {
+        if (value === "" || value === undefined || value === null) return "N/A";
+        const num = typeof value === "string" ? parseFloat(value) : value;
+        if (isNaN(num)) return "N/A";
+        return num.toFixed(2);
     }
 
     private normalize(value: string): string {

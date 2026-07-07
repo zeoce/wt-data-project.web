@@ -123,6 +123,18 @@ export class SelectBuilder {
     }
 }
 
+// visibility selection for choosing results or heatmap
+export const ViewModeSelect = Symbol("ViewModeSelect");
+Container.bind(ViewModeSelect).toDynamicValue(() => {
+    return Container.get(SelectBuilder)
+        .id("view-mode-selection")
+        .label("View: ")
+        .class.add("view-mode-selection")
+        .data.add({id: "results", text: "Results"})
+        .data.add({id: "heatmap", text: "Heatmap"})
+        .default("results");
+})
+
 // date selection for choosing date
 export const DateSelect = Symbol("DateSelect");
 Container.bind(DateSelect).toDynamicValue(() => {
@@ -185,7 +197,7 @@ Container.bind(BrRangeSelect).toDynamicValue(() => {
         .class.add("plot-selection")
         .data.add({id: "0", text: "0"})
         .data.add({id: "1", text: "1"})
-        .default("1");
+        .default("0");
 })
 
 // scale select for absolute value or percentage

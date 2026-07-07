@@ -59,6 +59,34 @@ export class Application {
                     .map(each => each.date)
                     .reverse();
 
+        // init sidebar toggle logic
+        const sidebarDiv = document.getElementById("sidebar");
+        const toggleBtn = document.createElement("button");
+        toggleBtn.id = "sidebar-toggle";
+        toggleBtn.innerHTML = "☰ Filters";
+        toggleBtn.className = "sidebar-toggle-btn";
+        sidebarDiv.parentElement.insertBefore(toggleBtn, sidebarDiv);
+
+        const updateSidebar = (collapsed: boolean) => {
+            if (collapsed) {
+                sidebarDiv.classList.add("collapsed");
+                toggleBtn.setAttribute("aria-expanded", "false");
+            } else {
+                sidebarDiv.classList.remove("collapsed");
+                toggleBtn.setAttribute("aria-expanded", "true");
+            }
+        };
+
+        const savedSidebarState = localStorage.getItem("sidebar-collapsed");
+        let isCollapsed = savedSidebarState !== null ? savedSidebarState === "true" : true;
+        updateSidebar(isCollapsed);
+
+        toggleBtn.addEventListener("click", () => {
+            isCollapsed = !isCollapsed;
+            localStorage.setItem("sidebar-collapsed", isCollapsed.toString());
+            updateSidebar(isCollapsed);
+        });
+
                 // initialize the logo
                 Application.logo = Container.get(Application.Logo);
                 Application.logo.init();
