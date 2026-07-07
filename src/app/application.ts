@@ -59,6 +59,8 @@ export class Application {
                     .map(each => each.date)
                     .reverse();
 
+                Application.initSidebarToggle();
+
                 // initialize the logo
                 Application.logo = Container.get(Application.Logo);
                 Application.logo.init();
@@ -80,6 +82,34 @@ export class Application {
                     true
                 );
             });
+    }
+
+    static initSidebarToggle(): void {
+        const sidebar = document.getElementById("sidebar");
+        if (!sidebar || document.getElementById("sidebar-toggle")) return;
+        const main = document.getElementById("main-div");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.id = "sidebar-toggle";
+        button.className = "sidebar-toggle-btn";
+        button.setAttribute("aria-controls", "sidebar");
+
+        let collapsed = localStorage.getItem("wt-sidebar-collapsed");
+        let isCollapsed = collapsed === null ? true : collapsed === "true";
+        const apply = () => {
+            sidebar.classList.toggle("collapsed", isCollapsed);
+            main?.classList.toggle("sidebar-collapsed", isCollapsed);
+            button.setAttribute("aria-expanded", String(!isCollapsed));
+            button.textContent = isCollapsed ? "Filters" : "Hide filters";
+        };
+
+        button.addEventListener("click", () => {
+            isCollapsed = !isCollapsed;
+            localStorage.setItem("wt-sidebar-collapsed", String(isCollapsed));
+            apply();
+        });
+        sidebar.parentElement?.insertBefore(button, sidebar);
+        apply();
     }
 
     static renderDataStatus(message: string, error = false): void {
