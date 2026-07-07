@@ -64,6 +64,26 @@ div#sidebar label{
   top:0;
   background:var(--bg);
   z-index:3;
+  overflow:hidden;
+  transition:flex-basis .18s ease, max-width .18s ease, padding .18s ease, opacity .18s ease, border-width .18s ease;
+}
+
+.sidebar-toggle-btn{
+  position:sticky;
+  top:58px;
+  align-self:flex-start;
+  z-index:4;
+  margin:10px 0 0 8px;
+  white-space:nowrap;
+}
+
+#sidebar.collapsed{
+  flex-basis:0;
+  max-width:0;
+  padding:0;
+  opacity:0;
+  border-width:0;
+  pointer-events:none;
 }
 
 #sidebar label{
@@ -341,6 +361,16 @@ svg{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:8px;
+  }
+
+  .sidebar-toggle-btn{
+    position:static;
+    width:calc(100% - 16px);
+    margin:8px;
+  }
+
+  #sidebar.collapsed{
+    display:none;
   }
 
   #content{
@@ -704,9 +734,60 @@ input:focus-visible{
   background:color-mix(in srgb, var(--warn) 80%, transparent);
 }
 
+.table-legend{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:8px 10px 10px;
+  color:var(--muted);
+  font-size:.88rem;
+}
+
+.table-legend-swatch{
+  width:18px;
+  height:12px;
+  border:1px solid var(--border);
+  border-radius:3px;
+  background:color-mix(in srgb, var(--warn) 80%, transparent);
+}
+
 .ground-rb-results td:first-child button{
   font-weight:800;
   color:var(--accent-strong);
+}
+
+.memory-chip{
+  display:inline-flex;
+  align-items:stretch;
+}
+
+.memory-chip .chip-main{
+  border-radius:10px 0 0 10px;
+}
+
+.memory-chip .chip-remove{
+  min-width:34px;
+  padding:8px;
+  border-left:0;
+  border-radius:0 10px 10px 0;
+  color:var(--muted);
+}
+
+.clear-memory,
+#clear-comparison{
+  color:var(--muted);
+}
+
+.compare-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 0 10px;
+}
+
+.compare-remove{
+  min-height:34px;
+  padding:6px 8px;
 }
 
 /* Vehicle detail + comparison */
@@ -1430,7 +1511,13 @@ body.modal-open{
   }
 }
 
-@media (min-width:660px) and (max-width:1179px){
+@media (min-width:980px) and (max-width:1179px){
+  .ground-card-view{
+    grid-template-columns:repeat(3, minmax(280px, 320px));
+  }
+}
+
+@media (min-width:660px) and (max-width:979px){
   .ground-card-view{
     grid-template-columns:repeat(2, minmax(280px, 320px));
   }

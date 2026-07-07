@@ -52,14 +52,22 @@ export class Select extends SideBarElement {
     }
 
     private addData() {
+        const savedValue = localStorage.getItem(this.id);
+        const values = this.data.map(item => item.id);
+        const fallbackValue = values.indexOf(this.defaultSelectId) >= 0 ? this.defaultSelectId : values[0];
+        const selectedValue = savedValue !== null && values.indexOf(savedValue) >= 0 ? savedValue : fallbackValue;
         this.selection
             .selectAll()
             .data(this.data)
             .enter()
             .append<HTMLOptionElement>("option")
             .attr("value", d => d.id)
-            .attr("selected", d => d.id === this.defaultSelectId ? "selected" : undefined)
+            .attr("selected", d => d.id === selectedValue ? "selected" : undefined)
             .html(d => d.text);
+        this.selection.property("value", selectedValue);
+        this.selection.on("change.persist", () => {
+            localStorage.setItem(this.id, String(this.selection.property("value")));
+        });
         return this;
     }
 }
@@ -185,7 +193,18 @@ Container.bind(BrRangeSelect).toDynamicValue(() => {
         .class.add("plot-selection")
         .data.add({id: "0", text: "0"})
         .data.add({id: "1", text: "1"})
-        .default("1");
+        .default("0");
+})
+
+// view mode selection for results-first browsing or legacy heatmap.
+export const ViewModeSelect = Symbol("ViewModeSelect");
+Container.bind(ViewModeSelect).toDynamicValue(() => {
+    return Container.get(SelectBuilder)
+        .id("view-mode-selection")
+        .label("View")
+        .data.add({id: "results", text: "Ground RB results"})
+        .data.add({id: "heatmap", text: "Legacy heatmap"})
+        .default("results");
 })
 
 // scale select for absolute value or percentage

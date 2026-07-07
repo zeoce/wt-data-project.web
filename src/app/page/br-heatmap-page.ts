@@ -1,8 +1,8 @@
 import { Page } from "./page";
 import { Container, Inject, Singleton, utils } from "../../utils";
 import { BrHeatmap } from "../../plot/br-heatmap";
-import { Sidebar } from "../global-env";
-import { BrRangeSelect, ClassSelect, DateSelect, MeasurementSelect, ModeSelect, Select } from "../sidebar/select";
+import { Content, Sidebar } from "../global-env";
+import { BrRangeSelect, ClassSelect, DateSelect, MeasurementSelect, ModeSelect, Select, ViewModeSelect } from "../sidebar/select";
 import * as d3 from "d3";
 import { BRRange, Clazz, Measurement, Mode } from "../options";
 import { Localization } from "../config";
@@ -21,7 +21,20 @@ export class BRHeatMapPage extends Page {
     update(): void {
         // remove old plot
         this.removeOld();
-        new GroundRbPanel(Application.metadata).render(document.getElementById("content"));
+        const content = document.getElementById("content");
+        if (!content) return;
+        content.innerHTML = "";
+        const resultsWrapper = document.createElement("div");
+        resultsWrapper.id = "ground-rb-wrapper";
+        const heatmapWrapper = document.createElement("div");
+        heatmapWrapper.id = "legacy-heatmap-wrapper";
+        heatmapWrapper.hidden = true;
+        content.appendChild(resultsWrapper);
+        content.appendChild(heatmapWrapper);
+        new GroundRbPanel(Application.metadata).render(resultsWrapper);
+
+        // add view selection
+        Container.get<Select>(ViewModeSelect).init();
         // add date selection
         Container.get<Select>(DateSelect).init();
         // add class selection
@@ -35,6 +48,7 @@ export class BRHeatMapPage extends Page {
         // colorblind mode checkbox
         Container.get<Checkbox>(ColorblindCheckbox).init();
         // init main content plot
+        Container.rebind(Content).toConstantValue(d3.select("#legacy-heatmap-wrapper"));
         // rebind the container to BrHeatmap constructor to new a object
         Container.rebind(BrHeatmap).toSelf();
         this.plot = Container.get(BrHeatmap);
@@ -54,6 +68,16 @@ export class BRHeatMapPage extends Page {
                 localStorage.setItem("colorblind-checkbox", d3.select("#colorblind-checkbox").property("checked").toString())
                 await this.plot.update(false)
             });
+
+        const viewSelect = document.getElementById("view-mode-selection") as HTMLSelectElement;
+        const applyView = () => {
+            const heatmapMode = viewSelect && viewSelect.value === "heatmap";
+            resultsWrapper.hidden = heatmapMode;
+            heatmapWrapper.hidden = !heatmapMode;
+        };
+        applyView();
+        utils.setEvent.byIds("view-mode-selection")
+            .onchange(() => applyView());
     }
 
     get date(): string {

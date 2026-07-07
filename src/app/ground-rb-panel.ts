@@ -207,10 +207,10 @@ export class GroundRbPanel {
             <div class="results-toolbar" aria-label="Vehicle result display controls">
                 <label>Sort
                     ${this.selectBare("ground-sort", [
-                        ["gkd", "Ground kills per death descending"],
+                        ["gkd", "Frags / death descending"],
                         ["win", "Win rate descending"],
                         ["played", "Battles descending"],
-                        ["gkb", "Ground kills per battle descending"],
+                        ["gkb", "Frags / battle descending"],
                         ["brAsc", "BR ascending"],
                         ["brDesc", "BR descending"],
                         ["name", "Name A-Z"]
@@ -234,14 +234,15 @@ export class GroundRbPanel {
                             ${this.tableHeader("rank", "Rank")}
                             ${this.tableHeader("win", "Win")}
                             ${this.tableHeader("battles", "Battles")}
-                            ${this.tableHeader("gkb", "G/K")}
-                            ${this.tableHeader("gkd", "G/D")}
+                            ${this.tableHeader("gkb", "Frags / battle")}
+                            ${this.tableHeader("gkd", "Frags / death")}
                             ${this.tableHeader("premium", "Premium")}
                             <th aria-label="Actions"></th>
                         </tr>
                     </thead>
                     <tbody id="ground-results"></tbody>
                 </table>
+                <p class="table-legend"><span class="table-legend-swatch" aria-hidden="true"></span>Gold rows indicate low sample size; interpret cautiously.</p>
             </div>
             <div class="ground-panels">
                 <article id="vehicle-detail" class="vehicle-detail" aria-live="polite"></article>
@@ -449,10 +450,10 @@ export class GroundRbPanel {
 
     private resultRow(row: JoinedRow, minBattles: number, rank: number): string {
         const battles = this.toNumber(row.rb_battles);
-        const low = battles < minBattles * 2 ? " low-sample" : "";
+        const low = battles < minBattles * 2;
         const compared = this.compareNames.indexOf(row.name) >= 0;
         return `
-            <tr class="${low}">
+            <tr${low ? " class=\"low-sample\" title=\"Low sample size; interpret cautiously\"" : ""}>
                 <td><button type="button" data-select="${this.escape(row.name)}">${this.displayName(row)}</button></td>
                 <td>${this.escape(row.nation)}</td>
                 <td>${this.formatValue(row.rb_br)}</td>
@@ -566,8 +567,8 @@ export class GroundRbPanel {
                 <dt>AB / RB / SB BR</dt><dd>${this.formatValue(row.ab_br)} / ${this.formatValue(row.rb_br)} / ${this.formatValue(row.sb_br)}</dd>
                 <dt>RB win rate</dt><dd>${this.formatPercentage(row.rb_win_rate)}</dd>
                 <dt>RB battles</dt><dd>${this.formatCount(row.rb_battles)}</dd>
-                <dt>RB ground frags/battle</dt><dd>${this.formatRatio(row.rb_ground_frags_per_battle)}</dd>
-                <dt>RB ground frags/death</dt><dd>${this.formatRatio(row.rb_ground_frags_per_death)}</dd>
+                <dt>RB frags / battle</dt><dd>${this.formatRatio(row.rb_ground_frags_per_battle)}</dd>
+                <dt>RB frags / death</dt><dd>${this.formatRatio(row.rb_ground_frags_per_death)}</dd>
                 <dt>RB repair</dt><dd>${this.formatCount(row.rb_repair)}</dd>
                 <dt>Premium</dt><dd>${this.isPremium(row) ? "Yes" : "No"}</dd>
                 <dt>Source update</dt><dd>${this.sourceInfo ? this.escape(this.sourceInfo.latestJoined.date) : "N/A"}</dd>
@@ -593,17 +594,24 @@ export class GroundRbPanel {
         }
         container.innerHTML = `
             <h3>Comparison</h3>
+            <div class="compare-actions">
+                <button type="button" id="copy-comparison">Copy comparison summary</button>
+                <button type="button" id="clear-comparison">Clear comparison</button>
+            </div>
             <div class="ground-rb-results-wrap">
                 <table class="compare-table">
-                    <thead><tr><th>Vehicle</th><th>BR</th><th>Win</th><th>Battles</th><th>G/K</th><th>G/D</th><th>Repair</th><th>Premium</th></tr></thead>
+                    <thead><tr><th>Vehicle</th><th>BR</th><th>Win</th><th>Battles</th><th>Frags / battle</th><th>Frags / death</th><th>Repair</th><th>Premium</th><th aria-label="Actions"></th></tr></thead>
                     <tbody>${rows.map(row => `
-                        <tr><td>${this.displayName(row)}</td><td>${this.formatValue(row.rb_br)}</td><td>${this.formatPercentage(row.rb_win_rate)}</td><td>${this.formatCount(row.rb_battles)}</td><td>${this.formatRatio(row.rb_ground_frags_per_battle)}</td><td>${this.formatRatio(row.rb_ground_frags_per_death)}</td><td>${this.formatCount(row.rb_repair)}</td><td>${this.isPremium(row) ? "Yes" : "No"}</td></tr>
+                        <tr><td>${this.displayName(row)}</td><td>${this.formatValue(row.rb_br)}</td><td>${this.formatPercentage(row.rb_win_rate)}</td><td>${this.formatCount(row.rb_battles)}</td><td>${this.formatRatio(row.rb_ground_frags_per_battle)}</td><td>${this.formatRatio(row.rb_ground_frags_per_death)}</td><td>${this.formatCount(row.rb_repair)}</td><td>${this.isPremium(row) ? "Yes" : "No"}</td><td><button type="button" class="compare-remove" data-remove-compare="${this.escape(row.name)}">Remove</button></td></tr>
                     `).join("")}</tbody>
                 </table>
             </div>
-            <button type="button" id="copy-comparison">Copy comparison summary</button>
         `;
         this.byId("copy-comparison").addEventListener("click", () => this.copyComparison());
+        this.byId("clear-comparison").addEventListener("click", () => this.clearCompare());
+        Array.prototype.forEach.call(container.querySelectorAll("[data-remove-compare]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => this.removeCompare(button.getAttribute("data-remove-compare")));
+        });
     }
 
     private copyComparison(): void {
@@ -611,7 +619,7 @@ export class GroundRbPanel {
             .map(name => this.rows.filter(row => row.name === name)[0])
             .filter(row => row);
         const text = rows.map(row =>
-            `${this.displayName(row)}: BR ${this.formatValue(row.rb_br)}, ${this.formatPercentage(row.rb_win_rate)} WR, ${this.formatCount(row.rb_battles)} battles, ${this.formatRatio(row.rb_ground_frags_per_battle)} G/K, ${this.formatRatio(row.rb_ground_frags_per_death)} G/D`
+            `${this.displayName(row)}: BR ${this.formatValue(row.rb_br)}, ${this.formatPercentage(row.rb_win_rate)} WR, ${this.formatCount(row.rb_battles)} battles, ${this.formatRatio(row.rb_ground_frags_per_battle)} frags / battle, ${this.formatRatio(row.rb_ground_frags_per_death)} frags / death`
         ).join("\n");
         navigator.clipboard?.writeText(text);
     }
@@ -658,7 +666,14 @@ export class GroundRbPanel {
     private renderMemory(): void {
         const recent = this.root.querySelector("#recent-searches");
         const favorites = this.root.querySelector("#favorite-vehicles");
-        if (recent) recent.innerHTML = this.recentSearches.slice(0, 5).map(text => `<button type="button" data-memory="${this.escape(text)}">${this.escape(text)}</button>`).join("");
+        if (recent) {
+            recent.innerHTML = this.recentSearches.slice(0, 5).map(text => `
+                <span class="memory-chip">
+                    <button type="button" class="chip-main" data-memory="${this.escape(text)}">${this.escape(text)}</button>
+                    <button type="button" class="chip-remove" data-remove-recent="${this.escape(text)}" aria-label="Remove ${this.escape(text)} from recent searches">x</button>
+                </span>
+            `).join("") + (this.recentSearches.length ? `<button type="button" class="clear-memory" id="clear-recent-searches">Clear</button>` : "");
+        }
         if (favorites) favorites.innerHTML = this.favorites.slice(0, 8).map(name => {
             const row = this.rows.filter(item => item.name === name)[0];
             return row ? `<button type="button" data-favorite="${this.escape(row.name)}">${this.displayName(row)}</button>` : "";
@@ -669,6 +684,22 @@ export class GroundRbPanel {
                 this.updateResults();
             });
         });
+        Array.prototype.forEach.call(this.root.querySelectorAll("[data-remove-recent]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => {
+                const value = button.getAttribute("data-remove-recent") || "";
+                this.recentSearches = this.recentSearches.filter(item => item !== value);
+                localStorage.setItem(STORAGE_RECENT, JSON.stringify(this.recentSearches));
+                this.renderMemory();
+            });
+        });
+        const clearRecent = this.root.querySelector("#clear-recent-searches");
+        if (clearRecent) {
+            clearRecent.addEventListener("click", () => {
+                this.recentSearches = [];
+                localStorage.setItem(STORAGE_RECENT, JSON.stringify(this.recentSearches));
+                this.renderMemory();
+            });
+        }
         Array.prototype.forEach.call(this.root.querySelectorAll("[data-favorite]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-favorite")));
         });
@@ -682,6 +713,21 @@ export class GroundRbPanel {
         } else if (this.compareNames.length < 4) {
             this.compareNames.push(name);
         }
+        localStorage.setItem(STORAGE_COMPARE, JSON.stringify(this.compareNames));
+        this.renderCompare();
+        this.updateResults();
+    }
+
+    private removeCompare(name: string): void {
+        if (!name) return;
+        this.compareNames = this.compareNames.filter(item => item !== name);
+        localStorage.setItem(STORAGE_COMPARE, JSON.stringify(this.compareNames));
+        this.renderCompare();
+        this.updateResults();
+    }
+
+    private clearCompare(): void {
+        this.compareNames = [];
         localStorage.setItem(STORAGE_COMPARE, JSON.stringify(this.compareNames));
         this.renderCompare();
         this.updateResults();
@@ -910,9 +956,19 @@ export class GroundRbPanel {
         const classSelect = document.getElementById("class-selection") as HTMLSelectElement;
         const modeSelect = document.getElementById("mode-selection") as HTMLSelectElement;
         const brRangeSelect = document.getElementById("br-range-selection") as HTMLSelectElement;
+        const viewSelect = document.getElementById("view-mode-selection") as HTMLSelectElement;
+        if (viewSelect) {
+            viewSelect.value = "heatmap";
+            localStorage.setItem("view-mode-selection", "heatmap");
+            viewSelect.dispatchEvent(new Event("change", { bubbles: true }));
+        }
         if (classSelect) classSelect.value = "Ground_vehicles";
         if (modeSelect) modeSelect.value = "rb";
-        if (brRangeSelect) brRangeSelect.value = "1";
+        if (brRangeSelect) {
+            brRangeSelect.value = "0";
+            localStorage.setItem("br-range-selection", "0");
+            brRangeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+        }
         const target = document.getElementById("main-svg") || document.getElementById("content");
         target?.scrollIntoView({ behavior: "smooth", block: "start" });
         this.selectVehicle(row.name);
