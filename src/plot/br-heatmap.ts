@@ -15,6 +15,7 @@ import { BRHeatMapPage } from "../app/page/br-heatmap-page";
 import { Nation } from "../data/wiki-data";
 import { BrHeatColorMap } from "../misc/color-map-def";
 
+const MIN_USABLE_HEATMAP_CELLS = 40;
 
 @Provider(BrHeatmap)
 export class BrHeatmap extends Plot {
@@ -136,11 +137,8 @@ export class BrHeatmap extends Plot {
 
         d3.csv(this.dataPath, async (data: TimeseriesData) => {
             // init
-            const dataObjs = this.extractData(data)
-            const squareWidth = this.width / nations.length;
-            const squareHeight = this.height / brs[this.page.brRange].length;
-            // build axis
-            const {x, y} = this.buildAxis();
+            const dataObjs = this.extractData(data);
+            this.buildAxis();
 
             // init the color bar, line chart, legend, table and tooltip
             this.colorBar.init();
@@ -155,22 +153,7 @@ export class BrHeatmap extends Plot {
                 this.table.winRateValue2color = this.value2color;
             }
 
-            // add heat squares
-            this.g.selectAll()
-                .data(dataObjs, d => d.nation + d.lowerBr)
-                .enter()
-                .append<SVGRectElement>("rect")
-                .attr("x", d => x(d.nation))
-                .attr("y", d => y(d.br))
-                .attr("width", squareWidth)
-                .attr("height", squareHeight)
-                .style("fill", d => this.value2color(d.value))
-                .style("stroke-width", 1)
-                .style("stroke", "black")
-                .on("pointerover", utils.eventWrapper<SVGRectElement, typeof this.onPointerOver>(this, this.onPointerOver))
-                .on("pointerleave", utils.eventWrapper<SVGRectElement, typeof this.onPointerLeave>(this, this.onPointerLeave))
-                .on("pointermove", utils.eventWrapper<SVGRectElement, typeof this.onPointerMove>(this, this.onPointerMove))
-                .on("click", utils.eventWrapper<SVGRectElement, typeof this.onClick>(this, this.onClick));
+            this.drawSquares(dataObjs, false);
 
             this.cache = data;
 
@@ -182,21 +165,21 @@ export class BrHeatmap extends Plot {
 
     async update(reDownload: boolean): Promise<BrHeatmap> {
         const oldAxis = d3.selectAll("g#br-heatmap-x, g#br-heatmap-y");
+        oldAxis.remove();
+        this.buildAxis();
 
         if (reDownload) {
             // if need re-download data
-            d3.csv(this.dataPath, (data: TimeseriesData) => {
-                this.updateSquares(data);
+            await new Promise<void>(resolve => d3.csv(this.dataPath, async (data: TimeseriesData) => {
+                await this.updateSquares(data);
                 this.cache = data;
-            })
+                resolve();
+            }));
         } else {
             // else read data from cache
             await this.updateSquares(this.cache);
         }
 
-        // reset axis
-        this.buildAxis();
-        oldAxis.remove();
         // reset selected data and sub plots
         this.selected = [];
         await this.resetSubPlots();
@@ -209,34 +192,68 @@ export class BrHeatmap extends Plot {
 
     private async updateSquares(data: TimeseriesData) {
         // init
-        const dataObjs = this.extractData(data)
+        const dataObjs = this.extractData(data);
 
         // colorMap function
         this.value2color = await this.getValue2color();
 
-        // change fill of squares
-        const rects = this.g
-            .selectAll<SVGRectElement, SquareInfo>("rect")
-            .data(dataObjs, d => d.nation + d.lowerBr);
-
-        rects.enter()
-            .transition()
-            .style("fill", d => this.value2color(d.value));
-
-        rects.exit()
-            .transition()
-            .style("fill", COLORS.BLANK);
-
-        rects.transition()
-            .style("fill", d => this.value2color(d.value));
+        this.drawSquares(dataObjs, true);
     }
 
-    private buildAxis() {
-        // x-axis
+    private drawSquares(dataObjs: Array<SquareInfo>, transition: boolean): void {
+        const {x, y} = this.scales();
+        const squareWidth = this.width / nations.length;
+        const squareHeight = this.height / brs[this.page.brRange].length;
+
+        const rects = this.g
+            .selectAll<SVGRectElement, SquareInfo>("rect")
+            .data(dataObjs, d => d.nation + d.br);
+
+        const entered = rects.enter()
+            .append<SVGRectElement>("rect")
+            .style("stroke-width", 1)
+            .style("stroke", "black")
+            .on("pointerover", utils.eventWrapper<SVGRectElement, typeof this.onPointerOver>(this, this.onPointerOver))
+            .on("pointerleave", utils.eventWrapper<SVGRectElement, typeof this.onPointerLeave>(this, this.onPointerLeave))
+            .on("pointermove", utils.eventWrapper<SVGRectElement, typeof this.onPointerMove>(this, this.onPointerMove))
+            .on("click", utils.eventWrapper<SVGRectElement, typeof this.onClick>(this, this.onClick));
+
+        rects.exit()
+            .remove();
+
+        const merged = entered.merge(rects)
+            .attr("x", d => x(d.nation))
+            .attr("y", d => y(d.br))
+            .attr("width", squareWidth)
+            .attr("height", squareHeight)
+            .style("stroke-width", 1)
+            .style("stroke", "black");
+
+        if (transition) {
+            merged.transition()
+                .style("fill", d => this.value2color(d.value));
+        } else {
+            merged
+                .style("fill", d => this.value2color(d.value));
+        }
+    }
+
+    private scales() {
         const x = d3.scaleBand()
             .range([0, this.width])
             .domain(nations);
 
+        const y = d3.scaleBand()
+            .range([this.height, 0])
+            .domain(brs[this.page.brRange]);
+
+        return {x, y};
+    }
+
+    private buildAxis() {
+        const {x, y} = this.scales();
+
+        // x-axis
         this.g.append("g")
             .attr("id", "br-heatmap-x")
             .style("font-size", 13)
@@ -246,10 +263,6 @@ export class BrHeatmap extends Plot {
             .select("#main-g g path.domain").remove()
 
         // y-axis
-        const y = d3.scaleBand()
-            .range([this.height, 0])
-            .domain(brs[this.page.brRange]);
-
         this.g.append("g")
             .attr("id", "br-heatmap-y")
             .style("font-size", 15)
@@ -260,16 +273,20 @@ export class BrHeatmap extends Plot {
     }
 
     private extractData(data: Array<TimeseriesRow>): Array<SquareInfo> {
-        const dataObjs = data.filter(row => row.date === this.page.date && row.cls === this.page.clazz)
+        const {rows, usedFallback, requestedDate, fallbackDate} = this.rowsForUsableDate(data);
+        const dataObjs = rows
             .map(row => {
                 const get = new TimeseriesRowGetter(row, this.page.mode, this.page.measurement);
                 return {
                     nation: row.nation,
-                    br: get.br,
+                    br: this.brLabel(get),
                     lowerBr: get.lowerBr,
                     value: get.value
                 }
-            });
+            })
+            .filter(row => brs[this.page.brRange].indexOf(row.br) >= 0);
+
+        this.renderDataStatus(dataObjs, usedFallback, requestedDate, fallbackDate);
 
         const blankObjs: Array<SquareInfo> = [];
         nations.forEach(nation => {
@@ -286,6 +303,81 @@ export class BrHeatmap extends Plot {
         })
 
         return dataObjs.concat(blankObjs);
+    }
+
+    private brLabel(get: TimeseriesRowGetter): string {
+        return this.page.brRange === "0" ? get.lowerBr.toFixed(1) : get.br;
+    }
+
+    private rowsForUsableDate(data: Array<TimeseriesRow>): {
+        rows: Array<TimeseriesRow>;
+        usedFallback: boolean;
+        requestedDate: string;
+        fallbackDate: string;
+    } {
+        const requestedDate = this.page.date;
+        const requestedRows = this.rowsForDate(data, requestedDate);
+        if (this.usableCellCount(requestedRows) >= MIN_USABLE_HEATMAP_CELLS) {
+            return {rows: requestedRows, usedFallback: false, requestedDate, fallbackDate: requestedDate};
+        }
+
+        const fallbackDate = this.latestUsableDate(data);
+        if (fallbackDate && fallbackDate !== requestedDate) {
+            const select = document.getElementById("date-selection") as HTMLSelectElement;
+            if (select) {
+                select.value = fallbackDate;
+                localStorage.setItem("date-selection", fallbackDate);
+            }
+            console.warn(`No complete heatmap data for ${requestedDate}; showing ${fallbackDate} instead.`);
+            return {
+                rows: this.rowsForDate(data, fallbackDate),
+                usedFallback: true,
+                requestedDate,
+                fallbackDate
+            };
+        }
+
+        console.warn(`Heatmap data for ${requestedDate} has ${this.usableCellCount(requestedRows)} usable cells.`);
+        return {rows: requestedRows, usedFallback: false, requestedDate, fallbackDate: requestedDate};
+    }
+
+    private rowsForDate(data: Array<TimeseriesRow>, date: string): Array<TimeseriesRow> {
+        return data.filter(row => row.date === date && row.cls === this.page.clazz);
+    }
+
+    private latestUsableDate(data: Array<TimeseriesRow>): string | null {
+        const dates = Array.from(new Set(data
+            .filter(row => row.cls === this.page.clazz)
+            .map(row => row.date)))
+            .sort()
+            .reverse();
+        return dates.find(date => this.usableCellCount(this.rowsForDate(data, date)) >= MIN_USABLE_HEATMAP_CELLS) || null;
+    }
+
+    private usableCellCount(rows: Array<TimeseriesRow>): number {
+        return rows
+            .map(row => new TimeseriesRowGetter(row, this.page.mode, this.page.measurement))
+            .filter(get => brs[this.page.brRange].indexOf(this.brLabel(get)) >= 0 && get.value > 0)
+            .length;
+    }
+
+    private renderDataStatus(dataObjs: Array<SquareInfo>, usedFallback: boolean, requestedDate: string, fallbackDate: string): void {
+        const status = document.getElementById("heatmap-data-status");
+        const usable = dataObjs.filter(row => row.value > 0).length;
+        if (usable < MIN_USABLE_HEATMAP_CELLS) {
+            console.warn(`Heatmap rendered with ${usable} coloured cells for ${this.page.date}/${this.page.clazz}/${this.page.mode}/${this.page.brRange}.`);
+        }
+        if (!status) return;
+        if (usedFallback) {
+            status.hidden = false;
+            status.textContent = `No complete heatmap data is available for ${requestedDate}. Showing latest available date instead: ${fallbackDate}.`;
+        } else if (usable < MIN_USABLE_HEATMAP_CELLS) {
+            status.hidden = false;
+            status.textContent = `Heatmap data for ${this.page.date} has fewer than ${MIN_USABLE_HEATMAP_CELLS} coloured cells for this filter combination.`;
+        } else {
+            status.hidden = true;
+            status.textContent = "";
+        }
     }
 
     private async getValue2color(): Promise<Value2Color> {

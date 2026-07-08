@@ -29,6 +29,7 @@ export class BRHeatMapPage extends Page {
         const heatmapWrapper = document.createElement("div");
         heatmapWrapper.id = "legacy-heatmap-wrapper";
         heatmapWrapper.hidden = true;
+        heatmapWrapper.innerHTML = `<p id="heatmap-data-status" class="heatmap-data-status" role="status" hidden></p>`;
         const modeSwitch = document.createElement("div");
         modeSwitch.className = "mode-switch-bar";
         modeSwitch.setAttribute("aria-label", "Primary view switcher");
@@ -89,7 +90,12 @@ export class BRHeatMapPage extends Page {
             resultsWrapper.hidden = heatmapMode;
             heatmapWrapper.hidden = !heatmapMode;
             this.updateModeSwitch(heatmapMode);
-            if (heatmapMode) this.setSidebarCollapsed(false);
+            if (heatmapMode) {
+                this.setSidebarCollapsed(false);
+                window.requestAnimationFrame(() => {
+                    if (this.plot && this.plot.cache) void this.plot.update(false);
+                });
+            }
         };
         applyView();
         utils.setEvent.byIds("view-mode-selection")
