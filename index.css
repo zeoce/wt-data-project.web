@@ -304,10 +304,6 @@ button,
   top:0;
 }
 
-.ground-rb-results tr.low-sample{
-  background:var(--warn);
-}
-
 .ground-panels{
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);
@@ -730,25 +726,31 @@ input:focus-visible{
   background:var(--row-hover);
 }
 
-.ground-rb-results tr.low-sample{
-  background:color-mix(in srgb, var(--warn) 80%, transparent);
-}
-
 .table-legend{
-  display:flex;
-  align-items:center;
-  gap:8px;
   margin:8px 10px 10px;
   color:var(--muted);
   font-size:.88rem;
 }
 
-.table-legend-swatch{
-  width:18px;
-  height:12px;
-  border:1px solid var(--border);
-  border-radius:3px;
-  background:color-mix(in srgb, var(--warn) 80%, transparent);
+.low-sample-battles{
+  font-weight:900;
+  color:var(--accent-strong);
+}
+
+.empty-results{
+  color:var(--muted);
+  font-weight:700;
+  text-align:center;
+}
+
+.card-empty{
+  grid-column:1 / -1;
+  width:min(100%, 520px);
+  margin:24px auto;
+  padding:18px;
+  border:1px dashed rgba(137,221,255,.28);
+  border-radius:var(--radius);
+  background:rgba(137,221,255,.06);
 }
 
 .ground-rb-results td:first-child button{
@@ -1030,6 +1032,60 @@ input:focus-visible{
 }
 
 /* ---------- Ground RB vehicle card gallery ---------- */
+.mode-switch-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  max-width:1220px;
+  margin:0 0 12px;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  background:linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, var(--accent) 8%), var(--panel));
+  color:var(--text);
+  box-shadow:var(--shadow);
+}
+
+.mode-switch-copy{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+}
+
+.mode-switch-copy strong{
+  color:var(--accent-strong);
+}
+
+.mode-switch-copy span{
+  color:var(--muted);
+  font-size:.9rem;
+}
+
+.mode-switch-toggle{
+  display:flex;
+  flex:0 0 auto;
+  gap:6px;
+  padding:4px;
+  border:1px solid rgba(137,221,255,.2);
+  border-radius:12px;
+  background:rgba(137,221,255,.06);
+}
+
+.mode-switch-toggle button{
+  min-height:38px;
+  min-width:96px;
+  border-color:transparent;
+  background:transparent;
+}
+
+.mode-switch-toggle button[aria-pressed="true"]{
+  background:linear-gradient(180deg, var(--accent-strong), var(--accent));
+  color:var(--accent-text);
+  box-shadow:0 8px 22px rgba(0,119,182,.18);
+}
+
 .results-toolbar{
   display:flex;
   align-items:center;
@@ -1524,6 +1580,21 @@ body.modal-open{
 }
 
 @media (max-width:640px){
+  .mode-switch-bar{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .mode-switch-toggle{
+    width:100%;
+    box-sizing:border-box;
+  }
+
+  .mode-switch-toggle button{
+    flex:1 1 0;
+    min-width:0;
+  }
+
   .results-toolbar,
   .results-toolbar label{
     align-items:stretch;

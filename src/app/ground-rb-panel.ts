@@ -83,6 +83,7 @@ const STORAGE_FAVORITES = "wt-ground-rb-favorites";
 const STORAGE_COMPARE = "wt-ground-rb-compare";
 const STORAGE_TABLE_SORT = "wt-ground-rb-table-sort";
 const CARD_PAGE_SIZE = 50;
+const LOW_SAMPLE_BATTLES = 400;
 
 type SortMode = "win" | "played" | "gkd" | "gkb" | "brAsc" | "brDesc" | "name";
 type ViewMode = "card" | "table";
@@ -242,7 +243,7 @@ export class GroundRbPanel {
                     </thead>
                     <tbody id="ground-results"></tbody>
                 </table>
-                <p class="table-legend"><span class="table-legend-swatch" aria-hidden="true"></span>Gold rows indicate low sample size; interpret cautiously.</p>
+                <p class="table-legend">Bold Battles values indicate fewer than ${LOW_SAMPLE_BATTLES} battles; interpret cautiously.</p>
             </div>
             <div class="ground-panels">
                 <article id="vehicle-detail" class="vehicle-detail" aria-live="polite"></article>
@@ -251,7 +252,7 @@ export class GroundRbPanel {
             <aside class="source-card">
                 <h3>Data, Source, And License</h3>
                 <p>Fork source: <a href="${this.sourceInfo.forkRepo}">zeoce/wt-data-project.web</a>. Upstream web: <a href="${this.sourceInfo.upstreamWebRepo}">ControlNet/wt-data-project.web</a>. Upstream data: <a href="${this.sourceInfo.upstreamDataRepo}">ControlNet/wt-data-project.data</a>.</p>
-                <p>This AGPL project keeps source availability and upstream attribution visible. Thunderskill-derived data is sample-based, and joined vehicle matching may contain errors. Treat low-sample rows as directional, not definitive.</p>
+                <p>This AGPL project keeps source availability and upstream attribution visible. Thunderskill-derived data is sample-based, and joined vehicle matching may contain errors. Treat low-sample values as directional, not definitive.</p>
                 <p>${this.imageSourceCopy()} Ground frags and deaths on cards are estimates derived from battles and per-battle/per-death rates.</p>
                 <p>Prepared: ${this.formatDate(this.sourceInfo.generatedAt)}. Latest data date: ${latest ? this.escape(latest.date) : "N/A"}.</p>
             </aside>
@@ -429,11 +430,13 @@ export class GroundRbPanel {
         const tableResults = this.tableSort
             ? rankedResults.slice().sort((a, b) => this.compareTableRows(a, b))
             : rankedResults;
-        this.byId("result-count").textContent = `${results.length} vehicles`;
+        this.byId("result-count").textContent = `${results.length} ${results.length === 1 ? "vehicle" : "vehicles"}`;
         this.updateTableSortHeaders();
 
         const tbody = this.byId("ground-results");
-        tbody.innerHTML = tableResults.slice(0, 100).map(item => this.resultRow(item.row, filters.minBattles, item.resultRank)).join("");
+        tbody.innerHTML = tableResults.length
+            ? tableResults.slice(0, 100).map(item => this.resultRow(item.row, item.resultRank)).join("")
+            : `<tr><td class="empty-results" colspan="10">No Ground RB vehicles match the current filters.</td></tr>`;
         Array.prototype.forEach.call(tbody.querySelectorAll("[data-select]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-select")));
         });
@@ -442,24 +445,25 @@ export class GroundRbPanel {
         });
 
         const visible = rankedResults.slice(0, this.visibleCards);
-        this.byId("ground-card-view").innerHTML = visible.map(item => this.vehicleCard(item.row, filters.minBattles, item.resultRank)).join("");
+        this.byId("ground-card-view").innerHTML = visible.length
+            ? visible.map(item => this.vehicleCard(item.row, item.resultRank)).join("")
+            : `<div class="empty-results card-empty">No Ground RB vehicles match the current filters.</div>`;
         this.bindCardButtons(this.byId("ground-card-view"));
         this.debugVisibleImages(visible.map(item => item.row));
         (this.byId("show-more-cards") as HTMLButtonElement).hidden = results.length <= this.visibleCards || this.currentView !== "card";
     }
 
-    private resultRow(row: JoinedRow, minBattles: number, rank: number): string {
-        const battles = this.toNumber(row.rb_battles);
-        const low = battles < minBattles * 2;
+    private resultRow(row: JoinedRow, rank: number): string {
+        const low = this.isLowSample(row);
         const compared = this.compareNames.indexOf(row.name) >= 0;
         return `
-            <tr${low ? " class=\"low-sample\" title=\"Low sample size; interpret cautiously\"" : ""}>
+            <tr>
                 <td><button type="button" data-select="${this.escape(row.name)}">${this.displayName(row)}</button></td>
                 <td>${this.escape(row.nation)}</td>
                 <td>${this.formatValue(row.rb_br)}</td>
                 <td>#${rank}</td>
                 <td>${this.formatPercentage(row.rb_win_rate)}</td>
-                <td>${this.formatCount(row.rb_battles)}</td>
+                <td${low ? ` class="low-sample-battles" title="Fewer than ${LOW_SAMPLE_BATTLES} battles; interpret cautiously"` : ""}>${this.formatCount(row.rb_battles)}</td>
                 <td>${this.formatRatio(row.rb_ground_frags_per_battle)}</td>
                 <td>${this.formatRatio(row.rb_ground_frags_per_death)}</td>
                 <td>${this.isPremium(row) ? "Yes" : "No"}</td>
@@ -468,10 +472,10 @@ export class GroundRbPanel {
         `;
     }
 
-    private vehicleCard(row: JoinedRow, minBattles: number, rank: number): string {
+    private vehicleCard(row: JoinedRow, rank: number): string {
         const compared = this.compareNames.indexOf(row.name) >= 0;
         const favorite = this.favorites.indexOf(row.name) >= 0;
-        const lowSample = this.toNumber(row.rb_battles) < minBattles * 2;
+        const lowSample = this.isLowSample(row);
         return `
             <article class="vehicle-card${this.isPremium(row) ? " premium-card" : ""}${lowSample ? " low-sample-card" : ""}" data-nation="${this.escape(row.nation)}">
                 ${this.vehicleArt(row)}
@@ -494,7 +498,7 @@ export class GroundRbPanel {
                         ${this.stat("SL / game", this.formatCount(row.rb_sl_rate))}
                         ${this.stat("RP / game", this.formatCount(row.rb_rp_rate))}
                     </dl>
-                    <div class="card-caveat-row">${lowSample ? "<p class=\"card-caveat\">Low sample: treat cautiously.</p>" : ""}</div>
+                    <div class="card-caveat-row">${lowSample ? `<p class="card-caveat">Fewer than ${LOW_SAMPLE_BATTLES} battles: interpret cautiously.</p>` : ""}</div>
                     <div class="card-actions">
                         <button type="button" data-select="${this.escape(row.name)}">Details</button>
                         <button type="button" data-compare="${this.escape(row.name)}">${compared ? "Remove" : "Compare"}</button>
@@ -554,7 +558,7 @@ export class GroundRbPanel {
 
     private renderDetail(row: JoinedRow): void {
         const favorites = this.favorites.indexOf(row.name) >= 0;
-        const lowSample = this.toNumber(row.rb_battles) < this.filters().minBattles;
+        const lowSample = this.isLowSample(row);
         this.byId("vehicle-detail").innerHTML = `
             <h3>${this.displayName(row)}</h3>
             <div class="detail-actions">
@@ -573,7 +577,7 @@ export class GroundRbPanel {
                 <dt>Premium</dt><dd>${this.isPremium(row) ? "Yes" : "No"}</dd>
                 <dt>Source update</dt><dd>${this.sourceInfo ? this.escape(this.sourceInfo.latestJoined.date) : "N/A"}</dd>
             </dl>
-            <p class="data-caveat">${lowSample ? "Low sample warning: this row is below the selected battle threshold. " : ""}Thunderskill data is sample-based and joined data can contain vehicle matching errors.</p>
+            <p class="data-caveat">${lowSample ? `Low sample warning: this vehicle has fewer than ${LOW_SAMPLE_BATTLES} battles. ` : ""}Thunderskill data is sample-based and joined data can contain vehicle matching errors.</p>
         `;
         this.byId("favorite-current").addEventListener("click", () => {
             this.toggleName(this.favorites, row.name, STORAGE_FAVORITES, 99);
@@ -948,6 +952,10 @@ export class GroundRbPanel {
         const perDeath = this.toNumber(row.rb_ground_frags_per_death);
         const estimate = perDeath > 0 ? Math.round(frags / perDeath) : 0;
         return estimate > 0 ? `${estimate}` : "N/A";
+    }
+
+    private isLowSample(row: JoinedRow): boolean {
+        return this.toNumber(row.rb_battles) > 0 && this.toNumber(row.rb_battles) < LOW_SAMPLE_BATTLES;
     }
 
     private showLegacyPlot(name: string): void {

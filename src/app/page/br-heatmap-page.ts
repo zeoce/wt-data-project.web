@@ -29,6 +29,20 @@ export class BRHeatMapPage extends Page {
         const heatmapWrapper = document.createElement("div");
         heatmapWrapper.id = "legacy-heatmap-wrapper";
         heatmapWrapper.hidden = true;
+        const modeSwitch = document.createElement("div");
+        modeSwitch.className = "mode-switch-bar";
+        modeSwitch.setAttribute("aria-label", "Primary view switcher");
+        modeSwitch.innerHTML = `
+            <div class="mode-switch-copy">
+                <strong>Ground RB workspace</strong>
+                <span id="mode-switch-status">Results mode</span>
+            </div>
+            <div class="mode-switch-toggle" role="group" aria-label="Switch between results and heatmap">
+                <button type="button" id="mode-results" aria-controls="ground-rb-wrapper" aria-pressed="true">Results</button>
+                <button type="button" id="mode-heatmap" aria-controls="legacy-heatmap-wrapper" aria-pressed="false">Heatmap</button>
+            </div>
+        `;
+        content.appendChild(modeSwitch);
         content.appendChild(resultsWrapper);
         content.appendChild(heatmapWrapper);
         new GroundRbPanel(Application.metadata).render(resultsWrapper);
@@ -74,10 +88,51 @@ export class BRHeatMapPage extends Page {
             const heatmapMode = viewSelect && viewSelect.value === "heatmap";
             resultsWrapper.hidden = heatmapMode;
             heatmapWrapper.hidden = !heatmapMode;
+            this.updateModeSwitch(heatmapMode);
+            if (heatmapMode) this.setSidebarCollapsed(false);
         };
         applyView();
         utils.setEvent.byIds("view-mode-selection")
             .onchange(() => applyView());
+        this.bindModeSwitch(viewSelect, applyView);
+    }
+
+    private bindModeSwitch(viewSelect: HTMLSelectElement, applyView: () => void): void {
+        const resultsButton = document.getElementById("mode-results");
+        const heatmapButton = document.getElementById("mode-heatmap");
+        resultsButton?.addEventListener("click", () => {
+            if (viewSelect) viewSelect.value = "results";
+            localStorage.setItem("view-mode-selection", "results");
+            applyView();
+        });
+        heatmapButton?.addEventListener("click", () => {
+            if (viewSelect) viewSelect.value = "heatmap";
+            localStorage.setItem("view-mode-selection", "heatmap");
+            applyView();
+        });
+    }
+
+    private updateModeSwitch(heatmapMode: boolean): void {
+        document.getElementById("mode-results")?.setAttribute("aria-pressed", String(!heatmapMode));
+        document.getElementById("mode-heatmap")?.setAttribute("aria-pressed", String(heatmapMode));
+        const status = document.getElementById("mode-switch-status");
+        if (status) {
+            status.textContent = heatmapMode ? "Heatmap mode: filters and chart controls are in the sidebar" : "Results mode";
+        }
+    }
+
+    private setSidebarCollapsed(collapsed: boolean): void {
+        const sidebar = document.getElementById("sidebar");
+        const main = document.getElementById("main-div");
+        const button = document.getElementById("sidebar-toggle");
+        if (!sidebar) return;
+        sidebar.classList.toggle("collapsed", collapsed);
+        main?.classList.toggle("sidebar-collapsed", collapsed);
+        localStorage.setItem("wt-sidebar-collapsed", String(collapsed));
+        if (button) {
+            button.setAttribute("aria-expanded", String(!collapsed));
+            button.textContent = collapsed ? "Filters" : "Hide filters";
+        }
     }
 
     get date(): string {
