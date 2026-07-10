@@ -2475,3 +2475,132 @@ button:hover,
   }
 }
 
+/* ---------- Heatmap readability pass ---------- */
+#legacy-heatmap-wrapper{
+  max-width:1440px;
+}
+
+.heatmap-panel{
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, var(--accent) 8%), var(--panel));
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+
+.heatmap-panel-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+  padding:18px 20px;
+  border-bottom:1px solid var(--border);
+  background:color-mix(in srgb, var(--panel) 88%, var(--ink) 12%);
+}
+
+.heatmap-panel-head h2{
+  margin:6px 0 0;
+  color:var(--text);
+  font-size:1.42rem;
+  line-height:1.1;
+}
+
+.heatmap-panel-head p{
+  max-width:620px;
+  margin:0;
+  color:var(--muted);
+  font-weight:700;
+}
+
+.heatmap-visualization{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-start;
+  justify-content:center;
+  gap:0;
+  padding:20px;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+#main-svg,
+#color-bar-svg{
+  flex:0 0 auto;
+  background:#111916;
+}
+
+#main-svg{
+  margin:0;
+  border:1px solid rgba(255,255,255,.13);
+  border-right:0;
+  border-radius:12px 0 0 12px;
+  box-shadow:none;
+}
+
+#color-bar-svg{
+  margin:0;
+  border:1px solid rgba(255,255,255,.13);
+  border-left:0;
+  border-radius:0 12px 12px 0;
+  box-shadow:none;
+}
+
+#line-chart-svg,
+#legend-svg{
+  flex:0 0 auto;
+  margin-top:20px;
+  background:#111916;
+}
+
+#main-svg .heatmap-axis text,
+#color-bar-svg .legend-axis text{
+  fill:#dbe7df;
+  font-weight:800;
+}
+
+#main-svg .heatmap-axis line,
+#color-bar-svg .legend-axis line{
+  stroke:rgba(219,231,223,.52);
+}
+
+#main-svg .heatmap-axis path,
+#color-bar-svg .legend-axis path{
+  stroke:rgba(219,231,223,.32);
+}
+
+#main-svg rect{
+  shape-rendering:geometricPrecision;
+  transition:stroke-width .12s ease, stroke .12s ease, filter .12s ease;
+}
+
+#main-svg rect.is-empty-cell{
+  opacity:.58;
+}
+
+#main-svg rect.is-hovered{
+  stroke:#f7fbf6 !important;
+  stroke-width:3px !important;
+  filter:brightness(1.08);
+}
+
+#main-svg rect.is-selected{
+  stroke:#ffffff !important;
+  stroke-width:4px !important;
+  filter:drop-shadow(0 0 5px rgba(255,255,255,.45));
+}
+
+#selected-table-div{
+  flex:1 1 100%;
+}
+
+@media (max-width:1180px){
+  .heatmap-panel-head{
+    flex-direction:column;
+  }
+
+  .heatmap-visualization{
+    justify-content:flex-start;
+  }
+}
+
