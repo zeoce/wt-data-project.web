@@ -1,0 +1,58 @@
+name: refresh upstream data
+
+on:
+  schedule:
+    # GitHub schedules are UTC. 13:00 UTC is 6am in Vancouver during daylight time.
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-upstream-data
+  cancel-in-progress: false
+
+jobs:
+  refresh-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Refresh public data
+        run: |
+          npm run prepare:data
+          npm run prepare:images
+
+      - name: Validate Cloudflare Pages build
+        run: |
+          npm run build:pages
+          npm run check:dist
+        env:
+          CI: true
+
+      - name: Commit refreshed data
+        run: |
+          if git diff --quiet -I '"generatedAt":' -- public/data; then
+            echo "No upstream data changes detected."
+            git restore -- public/data
+            exit 0
+          fi
+
+          latest_date="$(node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('public/data/source-info.json','utf8')); console.log(s.latestJoined.date)")"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/latest-joined.csv public/data/metadata.json public/data/source-info.json public/data/vehicle-images.json
+          git commit -m "Refresh public data to ${latest_date}"
+          git push origin HEAD:main

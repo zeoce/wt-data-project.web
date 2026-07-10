@@ -86,6 +86,12 @@ Manual image corrections can be added to `scripts/vehicle-image-overrides.json` 
 }
 ```
 
+### Scheduled Data Refresh
+
+`.github/workflows/refresh-data.yaml` refreshes upstream data every day at `13:00 UTC`, which is 6am in Vancouver during daylight time. The workflow can also be run manually from GitHub Actions. It runs `prepare:data`, `prepare:images`, `build:pages`, and `check:dist`, then commits the regenerated `public/data/*` files directly to `main` only when upstream data has changed. A successful commit to `main` triggers Cloudflare Pages to rebuild and publish the refreshed dataset.
+
+GitHub cron schedules are UTC-only, so the run time will be one hour different during standard time unless the cron is adjusted.
+
 ### Cloudflare Pages Troubleshooting
 
 - Blank app shell: confirm `dist/index.html`, `dist/bundle.js`, `dist/index.css`, and `dist/config/params.json` are present and served with the expected content types.
