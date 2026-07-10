@@ -29,7 +29,19 @@ export class BRHeatMapPage extends Page {
         const heatmapWrapper = document.createElement("div");
         heatmapWrapper.id = "legacy-heatmap-wrapper";
         heatmapWrapper.hidden = true;
-        heatmapWrapper.innerHTML = `<p id="heatmap-data-status" class="heatmap-data-status" role="status" hidden></p>`;
+        heatmapWrapper.innerHTML = `
+            <section class="heatmap-panel" aria-label="Battle rating heatmap">
+                <div class="heatmap-panel-head">
+                    <div>
+                        <span class="eyebrow">Legacy heatmap</span>
+                        <h2>BR balance matrix</h2>
+                    </div>
+                    <p>Use the sidebar to change date, class, mode, measurement, BR range, and colorblind mode. Click cells to compare trends below.</p>
+                </div>
+                <p id="heatmap-data-status" class="heatmap-data-status" role="status" hidden></p>
+                <div id="heatmap-visualization" class="heatmap-visualization"></div>
+            </section>
+        `;
         const modeSwitch = document.createElement("div");
         modeSwitch.className = "mode-switch-bar";
         modeSwitch.setAttribute("aria-label", "Primary view switcher");
@@ -63,7 +75,7 @@ export class BRHeatMapPage extends Page {
         // colorblind mode checkbox
         Container.get<Checkbox>(ColorblindCheckbox).init();
         // init main content plot
-        Container.rebind(Content).toConstantValue(d3.select("#legacy-heatmap-wrapper"));
+        Container.rebind(Content).toConstantValue(d3.select("#heatmap-visualization"));
         // rebind the container to BrHeatmap constructor to new a object
         Container.rebind(BrHeatmap).toSelf();
         this.plot = Container.get(BrHeatmap);

@@ -1,24 +1,24 @@
 {
   "BrHeatmapPage": {
     "BrHeatmap": {
-      "svgHeight": 800,
-      "svgWidth": 600,
+      "svgHeight": 780,
+      "svgWidth": 980,
       "margin": {
-        "top": 20,
-        "right": 30,
-        "bottom": 40,
-        "left": 100
+        "top": 28,
+        "right": 28,
+        "bottom": 56,
+        "left": 74
       },
       "mainSvgId": "main-svg"
     },
     "ColorBar": {
-      "svgHeight": 800,
-      "svgWidth": 60,
+      "svgHeight": 780,
+      "svgWidth": 112,
       "margin": {
-        "top": 20,
-        "right": 40,
-        "bottom": 40,
-        "left": 0
+        "top": 28,
+        "right": 54,
+        "bottom": 56,
+        "left": 12
       }
     },
     "BrLineChart": {

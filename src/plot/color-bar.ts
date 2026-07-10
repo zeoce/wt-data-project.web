@@ -72,8 +72,10 @@ export class ColorBar extends Plot {
         const legendWidth = this.width;
 
         this.g.append<SVGRectElement>('rect')
-            .attr('x1', 0)
-            .attr('y1', 10)
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('rx', 6)
+            .attr('ry', 6)
             .attr('width', legendWidth)
             .attr('height', legendHeight)
             .style('fill', `url(#${gradientId})`);
@@ -90,10 +92,13 @@ export class ColorBar extends Plot {
                 .range([legendHeight, 0])
         }
 
-        let legendAxis = d3.axisRight(legendScale);
+        let legendAxis = d3.axisRight(legendScale)
+            .tickSize(4);
 
         if (scale === "log") {
             legendAxis = legendAxis.ticks(3);
+        } else {
+            legendAxis = legendAxis.ticks(6);
         }
 
         legendAxis = legendAxis
@@ -110,7 +115,7 @@ export class ColorBar extends Plot {
         this.g.append("g")
             .style("font-size", scale === "log" ? 12 : null)
             .attr("class", "legend-axis")
-            .attr("transform", "translate(" + legendWidth + ", 0)")
+            .attr("transform", "translate(" + (legendWidth + 4) + ", 0)")
             .call(legendAxis);
 
         return this;

@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import * as _ from "lodash";
 import { Plot } from "./plot";
 import { TimeseriesData, TimeseriesRow, TimeseriesRowGetter } from "../data/timeseries-data";
-import { categoricalColors, COLORS, CONT_COLORS, Container, Inject, MousePosition, Provider, utils } from "../utils";
+import { categoricalColors, COLORS, Container, Inject, MousePosition, Provider, utils } from "../utils";
 import { ColorBar } from "./color-bar";
 import { BrLineChart, BrLineChartDataObj } from "./line-chart";
 import { BrHeatmapLegend } from "./legend";
@@ -16,6 +16,8 @@ import { Nation } from "../data/wiki-data";
 import { BrHeatColorMap } from "../misc/color-map-def";
 
 const MIN_USABLE_HEATMAP_CELLS = 40;
+const HEATMAP_EMPTY_COLOR = "#2A322E";
+const HEATMAP_CELL_STROKE = "rgba(255,255,255,0.22)";
 
 @Provider(BrHeatmap)
 export class BrHeatmap extends Plot {
@@ -47,12 +49,13 @@ export class BrHeatmap extends Plot {
     }
 
     onPointerLeave(_: SquareInfo, node: SVGRectElement): void {
-        d3.select(node).style("stroke", "black");
+        d3.select(node).classed("is-hovered", false);
         this.tooltip.hide();
     }
 
     onPointerOver(d: SquareInfo, node: SVGRectElement): void {
-        d3.select(node).style("stroke", "white");
+        if (d.value <= 0) return;
+        d3.select(node).classed("is-hovered", true);
         this.tooltip.appear();
         this.tooltip.rect
             .transition()
@@ -61,6 +64,7 @@ export class BrHeatmap extends Plot {
     }
 
     async onPointerMove(d: SquareInfo, node: SVGRectElement): Promise<void> {
+        if (d.value <= 0) return;
         await this.tooltip.update([
             `${Container.get(Localization.BrHeatmapPage.Tooltip.nation)}${Container.get<NationTranslator>(Localization.Nation)(d.nation)}`,
             `${Container.get(Localization.BrHeatmapPage.Tooltip.br)}${d.br}`,
@@ -74,15 +78,16 @@ export class BrHeatmap extends Plot {
     async onClick(_: SquareInfo, node: SVGRectElement): Promise<void> {
         const square: d3.Selection<SVGRectElement, SquareInfo, HTMLElement, any> = d3.select(node);
         const info: SquareInfo = square.data()[0];
+        if (info.value <= 0) return;
 
-        if (utils.rgbToHex(square.style("fill")).toUpperCase() === COLORS.AZURE) {
+        if (square.classed("is-selected")) {
             // if the square is selected
-            square.style("fill", this.value2color(info.value));
+            square.classed("is-selected", false);
             // remove the item in the `this.selected`
             this.selected = this.selected.filter(each => each.br !== info.br || each.nation !== info.nation);
         } else {
             // if the square is not selected
-            square.style("fill", COLORS.AZURE);
+            square.classed("is-selected", true);
             // add the item into the `this.selected`
             this.selected.push(info);
         }
@@ -211,8 +216,10 @@ export class BrHeatmap extends Plot {
 
         const entered = rects.enter()
             .append<SVGRectElement>("rect")
+            .attr("rx", 3)
+            .attr("ry", 3)
             .style("stroke-width", 1)
-            .style("stroke", "black")
+            .style("stroke", HEATMAP_CELL_STROKE)
             .on("pointerover", utils.eventWrapper<SVGRectElement, typeof this.onPointerOver>(this, this.onPointerOver))
             .on("pointerleave", utils.eventWrapper<SVGRectElement, typeof this.onPointerLeave>(this, this.onPointerLeave))
             .on("pointermove", utils.eventWrapper<SVGRectElement, typeof this.onPointerMove>(this, this.onPointerMove))
@@ -226,8 +233,11 @@ export class BrHeatmap extends Plot {
             .attr("y", d => y(d.br))
             .attr("width", squareWidth)
             .attr("height", squareHeight)
+            .classed("is-empty-cell", d => d.value <= 0)
+            .classed("is-selected", d => this.selected.some(each => each.br === d.br && each.nation === d.nation))
             .style("stroke-width", 1)
-            .style("stroke", "black");
+            .style("stroke", HEATMAP_CELL_STROKE)
+            .style("cursor", d => d.value > 0 ? "pointer" : "default");
 
         if (transition) {
             merged.transition()
@@ -256,6 +266,7 @@ export class BrHeatmap extends Plot {
         // x-axis
         this.g.append("g")
             .attr("id", "br-heatmap-x")
+            .attr("class", "heatmap-axis heatmap-axis-x")
             .style("font-size", 13)
             .attr("transform", `translate(0, ${this.height + 10})`)
             .call(d3.axisBottom(x).tickSize(0)
@@ -265,7 +276,8 @@ export class BrHeatmap extends Plot {
         // y-axis
         this.g.append("g")
             .attr("id", "br-heatmap-y")
-            .style("font-size", 15)
+            .attr("class", "heatmap-axis heatmap-axis-y")
+            .style("font-size", 14)
             .attr("transform", `translate(-5, 0)`)
             .call(d3.axisLeft(y).tickSize(0))
             .select("#main-g g path.domain").remove()
@@ -400,12 +412,12 @@ export class BrHeatmap extends Plot {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.winRate.Ground_vehicles.percentiles)
                         .range(this.colorMaps.winRate.Ground_vehicles.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else if (this.page.clazz === "Aviation") {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.winRate.Aviation.percentiles)
                         .range(this.colorMaps.winRate.Aviation.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else {
                     throw new Error(`Invalid clazz ${this.page.clazz} for colorMap win_rate`);
                 }
@@ -421,7 +433,7 @@ export class BrHeatmap extends Plot {
                 range2color = d3.scaleLinear<string, string>()
                     .domain(this.colorMaps.battlesSum.Ground_vehicles.percentiles)
                     .range(this.colorMaps.battlesSum.Ground_vehicles.colors)
-                    .interpolate(d3.interpolateHsl)
+                    .interpolate(d3.interpolateRgb)
                 break;
             case "air_frags_per_battle":
                 valueMin = 0;
@@ -435,12 +447,12 @@ export class BrHeatmap extends Plot {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.airFragsPerBattle.Ground_vehicles.percentiles)
                         .range(this.colorMaps.airFragsPerBattle.Ground_vehicles.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else if (this.page.clazz === "Aviation") {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.airFragsPerBattle.Aviation.percentiles)
                         .range(this.colorMaps.airFragsPerBattle.Aviation.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else {
                     throw new Error(`Invalid clazz ${this.page.clazz} for colorMap air_frags_per_battle`);
                 }
@@ -457,12 +469,12 @@ export class BrHeatmap extends Plot {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.airFragsPerDeath.Ground_vehicles.percentiles)
                         .range(this.colorMaps.airFragsPerDeath.Ground_vehicles.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else if (this.page.clazz === "Aviation") {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.airFragsPerDeath.Aviation.percentiles)
                         .range(this.colorMaps.airFragsPerDeath.Aviation.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else {
                     throw new Error(`Invalid clazz ${this.page.clazz} for colorMap air_frags_per_death`);
                 }
@@ -479,12 +491,12 @@ export class BrHeatmap extends Plot {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.groundFragsPerBattle.Ground_vehicles.percentiles)
                         .range(this.colorMaps.groundFragsPerBattle.Ground_vehicles.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else if (this.page.clazz === "Aviation") {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.groundFragsPerBattle.Aviation.percentiles)
                         .range(this.colorMaps.groundFragsPerBattle.Aviation.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else {
                     throw new Error(`Invalid clazz ${this.page.clazz} for colorMap ground_frags_per_battle`);
                 }
@@ -501,12 +513,12 @@ export class BrHeatmap extends Plot {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.groundFragsPerDeath.Ground_vehicles.percentiles)
                         .range(this.colorMaps.groundFragsPerDeath.Ground_vehicles.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else if (this.page.clazz === "Aviation") {
                     range2color = d3.scaleLinear<string, string>()
                         .domain(this.colorMaps.groundFragsPerDeath.Aviation.percentiles)
                         .range(this.colorMaps.groundFragsPerDeath.Aviation.colors)
-                        .interpolate(d3.interpolateHsl)
+                        .interpolate(d3.interpolateRgb)
                 } else {
                     throw new Error(`Invalid clazz ${this.page.clazz} for colorMap ground_frags_per_death`);
                 }
@@ -522,7 +534,7 @@ export class BrHeatmap extends Plot {
 
         return (value: number) => {
             if (value == 0.) {
-                return COLORS.BLANK;
+                return HEATMAP_EMPTY_COLOR;
             } else {
                 return range2color(value2range(value));
             }
