@@ -168,16 +168,25 @@ export class GroundRbPanel {
 
     private renderLoaded(): void {
         const latest = this.sourceInfo ? this.sourceInfo.latestJoined : null;
+        const premiumCount = this.rows.filter(row => this.isPremium(row)).length;
+        const imageCount = this.imageManifest ? this.imageManifest.stats.vehiclePageImages + this.imageManifest.stats.slotThumbnails : 0;
         this.root.innerHTML = `
-            <div class="data-status" role="status" aria-live="polite">
-                <strong>Data ready</strong>
-                <span>${this.rows.length} Ground RB vehicles loaded.</span>
-                <small>Latest joined data: ${latest ? this.escape(latest.date) : "N/A"} from /data/metadata.json</small>
-            </div>
+            <header class="workspace-hero">
+                <div class="workspace-hero-copy">
+                    <span class="eyebrow">War Thunder Ground RB</span>
+                    <h1>Vehicle intelligence workspace</h1>
+                    <p>Browse the live forked data set, compare vehicles, inspect sample quality, and jump into the legacy BR heatmap when you need the bigger picture.</p>
+                </div>
+                <dl class="workspace-metrics" aria-label="Ground RB data summary">
+                    ${this.heroMetric("Vehicles", this.rows.length.toLocaleString("en-US"), "Ground RB rows")}
+                    ${this.heroMetric("Latest", latest ? latest.date : "N/A", "joined snapshot")}
+                    ${this.heroMetric("Premium", premiumCount.toLocaleString("en-US"), "tagged vehicles")}
+                    ${this.heroMetric("Images", imageCount.toLocaleString("en-US"), "wiki matches")}
+                </dl>
+            </header>
             <details class="ground-rb-filters" open>
-                <summary>Ground RB quick start</summary>
+                <summary><span>Filters and presets</span><small>Nation, BR, premium status, sample floor, and search</small></summary>
                 <div class="ground-rb-intro">
-                    <p>Start with Realistic Battles ground vehicles, filter out thin samples, then click a vehicle for detail or add up to four vehicles to compare.</p>
                     <div class="preset-bar" aria-label="Quick analysis presets">
                         ${this.button("preset-win", "Top Ground RB win rate")}
                         ${this.button("preset-played", "Most-played Ground RB vehicles")}
@@ -201,27 +210,32 @@ export class GroundRbPanel {
                     </label>
                 </div>
                 <div class="search-memory">
-                    <div><strong>Recent</strong><span id="recent-searches"></span></div>
-                    <div><strong>Favourites</strong><span id="favorite-vehicles"></span></div>
+                    <div><strong>Recent searches</strong><span id="recent-searches"></span></div>
+                    <div><strong>Favourite vehicles</strong><span id="favorite-vehicles"></span></div>
                 </div>
             </details>
             <div class="results-toolbar" aria-label="Vehicle result display controls">
-                <label>Sort
-                    ${this.selectBare("ground-sort", [
-                        ["gkd", "Frags / death descending"],
-                        ["win", "Win rate descending"],
-                        ["played", "Battles descending"],
-                        ["gkb", "Frags / battle descending"],
-                        ["brAsc", "BR ascending"],
-                        ["brDesc", "BR descending"],
-                        ["name", "Name A-Z"]
-                    ])}
-                </label>
-                <div class="view-toggle" role="group" aria-label="View mode">
-                    <button type="button" id="view-card" aria-pressed="true">Card view</button>
-                    <button type="button" id="view-table" aria-pressed="false">Table view</button>
+                <div class="results-title">
+                    <span class="eyebrow">Filtered results</span>
+                    <strong id="result-count"></strong>
                 </div>
-                <span id="result-count" class="result-count"></span>
+                <div class="results-controls">
+                    <label>Sort
+                        ${this.selectBare("ground-sort", [
+                            ["gkd", "Frags / death descending"],
+                            ["win", "Win rate descending"],
+                            ["played", "Battles descending"],
+                            ["gkb", "Frags / battle descending"],
+                            ["brAsc", "BR ascending"],
+                            ["brDesc", "BR descending"],
+                            ["name", "Name A-Z"]
+                        ])}
+                    </label>
+                    <div class="view-toggle" role="group" aria-label="View mode">
+                        <button type="button" id="view-card" aria-pressed="true">Cards</button>
+                        <button type="button" id="view-table" aria-pressed="false">Table</button>
+                    </div>
+                </div>
             </div>
             <div id="ground-card-view" class="ground-card-view"></div>
             <div class="card-more-wrap"><button type="button" id="show-more-cards">Show more</button></div>
@@ -250,7 +264,7 @@ export class GroundRbPanel {
                 <article id="vehicle-compare" class="vehicle-compare"></article>
             </div>
             <aside class="source-card">
-                <h3>Data, Source, And License</h3>
+                <h3>Data, Source, and License</h3>
                 <p>Fork source: <a href="${this.sourceInfo.forkRepo}">zeoce/wt-data-project.web</a>. Upstream web: <a href="${this.sourceInfo.upstreamWebRepo}">ControlNet/wt-data-project.web</a>. Upstream data: <a href="${this.sourceInfo.upstreamDataRepo}">ControlNet/wt-data-project.data</a>.</p>
                 <p>This AGPL project keeps source availability and upstream attribution visible. Thunderskill-derived data is sample-based, and joined vehicle matching may contain errors. Treat low-sample values as directional, not definitive.</p>
                 <p>${this.imageSourceCopy()} Ground frags and deaths on cards are estimates derived from battles and per-battle/per-death rates.</p>
@@ -276,6 +290,16 @@ export class GroundRbPanel {
         this.renderMemory();
         this.updateResults();
         this.renderCompare();
+    }
+
+    private heroMetric(label: string, value: string, note: string): string {
+        return `
+            <div>
+                <dt>${this.escape(label)}</dt>
+                <dd>${this.escape(value)}</dd>
+                <small>${this.escape(note)}</small>
+            </div>
+        `;
     }
 
     private bindEvents(): void {
@@ -480,13 +504,16 @@ export class GroundRbPanel {
             <article class="vehicle-card${this.isPremium(row) ? " premium-card" : ""}${lowSample ? " low-sample-card" : ""}" data-nation="${this.escape(row.nation)}">
                 ${this.vehicleArt(row)}
                 <div class="vehicle-card-body">
-                    <h3>${this.displayName(row)}</h3>
+                    <div class="vehicle-card-title-row">
+                        <h3>${this.displayName(row)}</h3>
+                        <span class="result-rank">#${rank}</span>
+                    </div>
                     <div class="badge-row">
-                        <span>#${rank}</span>
                         <span>BR ${this.formatValue(row.rb_br)}</span>
                         <span>${this.escape(row.nation)}</span>
                         <span>${this.escape(this.typeLabel(row))}</span>
                         <span>Rank N/A</span>
+                        ${this.isPremium(row) ? "<span class=\"premium-badge\">Premium</span>" : ""}
                     </div>
                     <dl class="stat-grid">
                         ${this.stat("Battles", this.formatCount(row.rb_battles))}
@@ -560,6 +587,7 @@ export class GroundRbPanel {
         const favorites = this.favorites.indexOf(row.name) >= 0;
         const lowSample = this.isLowSample(row);
         this.byId("vehicle-detail").innerHTML = `
+            <span class="eyebrow">Selected vehicle</span>
             <h3>${this.displayName(row)}</h3>
             <div class="detail-actions">
                 <button type="button" id="favorite-current">${favorites ? "Unfavorite" : "Favourite"}</button>
@@ -593,11 +621,12 @@ export class GroundRbPanel {
             .filter(row => row);
         const container = this.byId("vehicle-compare");
         if (rows.length === 0) {
-            container.innerHTML = "<h3>Comparison</h3><p>Select 2 to 4 vehicles to compare.</p>";
+            container.innerHTML = "<span class=\"eyebrow\">Compare</span><h3>Comparison bench</h3><p>Select 2 to 4 vehicles to compare.</p>";
             return;
         }
         container.innerHTML = `
-            <h3>Comparison</h3>
+            <span class="eyebrow">Compare</span>
+            <h3>Comparison bench</h3>
             <div class="compare-actions">
                 <button type="button" id="copy-comparison">Copy comparison summary</button>
                 <button type="button" id="clear-comparison">Clear comparison</button>
