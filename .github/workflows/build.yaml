@@ -21,7 +21,9 @@ jobs:
         run: npm ci
 
       - name: Prepare static data
-        run: npm run prepare:data
+        run: |
+          npm run prepare:data
+          npm run prepare:images
 
       - name: Build Cloudflare Pages artifact
         run: npm run build:pages
