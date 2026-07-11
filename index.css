@@ -2524,6 +2524,13 @@ button:hover,
   -webkit-overflow-scrolling:touch;
 }
 
+.heatmap-scroll-pair{
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:flex-start;
+  white-space:nowrap;
+}
+
 #main-svg,
 #color-bar-svg{
   flex:0 0 auto;
@@ -2908,6 +2915,12 @@ button:hover,
     overflow:auto;
     -webkit-overflow-scrolling:touch;
     white-space:nowrap;
+  }
+
+  .heatmap-scroll-pair{
+    display:inline-flex;
+    max-width:none;
+    vertical-align:top;
   }
 
   #main-svg,
