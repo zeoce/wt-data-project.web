@@ -2525,10 +2525,15 @@ button:hover,
 }
 
 .heatmap-scroll-pair{
+  --heatmap-frozen-axis-width:0px;
   display:inline-flex;
   flex:0 0 auto;
   align-items:flex-start;
   white-space:nowrap;
+}
+
+#frozen-br-axis-svg{
+  display:none;
 }
 
 #main-svg,
@@ -2561,18 +2566,21 @@ button:hover,
 }
 
 #main-svg .heatmap-axis text,
-#color-bar-svg .legend-axis text{
+#color-bar-svg .legend-axis text,
+#frozen-br-axis-svg .heatmap-axis text{
   fill:#dbe7df;
   font-weight:800;
 }
 
 #main-svg .heatmap-axis line,
-#color-bar-svg .legend-axis line{
+#color-bar-svg .legend-axis line,
+#frozen-br-axis-svg .heatmap-axis line{
   stroke:rgba(219,231,223,.52);
 }
 
 #main-svg .heatmap-axis path,
-#color-bar-svg .legend-axis path{
+#color-bar-svg .legend-axis path,
+#frozen-br-axis-svg .heatmap-axis path{
   stroke:rgba(219,231,223,.32);
 }
 
@@ -2923,6 +2931,17 @@ button:hover,
     vertical-align:top;
   }
 
+  #frozen-br-axis-svg{
+    display:block;
+    flex:0 0 var(--heatmap-frozen-axis-width);
+    position:sticky;
+    left:0;
+    z-index:6;
+    margin-right:calc(var(--heatmap-frozen-axis-width) * -1);
+    background:#111916;
+    pointer-events:none;
+  }
+
   #main-svg,
   #color-bar-svg,
   #line-chart-svg,
@@ -2934,6 +2953,10 @@ button:hover,
   #color-bar-svg{
     display:inline-block;
     vertical-align:top;
+  }
+
+  #br-heatmap-y{
+    opacity:0;
   }
 
   #selected-table-div{

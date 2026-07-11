@@ -33,6 +33,8 @@ export class BrHeatmap extends Plot {
     @Inject(Content) readonly content: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>
     @Inject(BRHeatMapPage) readonly page: BRHeatMapPage;
     colorMaps: BrHeatColorMap | null = null;
+    private frozenAxisSvg!: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;
+    private frozenAxisG!: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
 
     selected: Array<SquareInfo> = [];
 
@@ -132,7 +134,21 @@ export class BrHeatmap extends Plot {
         const heatmapPair = this.content
             .append<HTMLDivElement>("div")
             .attr("id", "heatmap-scroll-pair")
-            .attr("class", "heatmap-scroll-pair");
+            .attr("class", "heatmap-scroll-pair")
+            .style("--heatmap-frozen-axis-width", `${this.margin.left}px`);
+
+        this.frozenAxisSvg = heatmapPair
+            .append<SVGSVGElement>("svg")
+            .attr("height", this.svgHeight)
+            .attr("width", this.margin.left)
+            .attr("id", "frozen-br-axis-svg")
+            .attr("aria-hidden", "true");
+
+        this.frozenAxisG = this.frozenAxisSvg
+            .append<SVGGElement>("g")
+            .attr("id", "frozen-br-axis-g")
+            .attr("class", "heatmap-axis heatmap-axis-y")
+            .attr("transform", `translate(${this.margin.left - 5}, ${this.margin.top})`);
 
         this.svg = heatmapPair
             .append<SVGSVGElement>("svg")
@@ -286,6 +302,15 @@ export class BrHeatmap extends Plot {
             .attr("transform", `translate(-5, 0)`)
             .call(d3.axisLeft(y).tickSize(0))
             .select("#main-g g path.domain").remove()
+
+        this.frozenAxisG
+            .selectAll("*")
+            .remove();
+        this.frozenAxisG
+            .style("font-size", 14)
+            .call(d3.axisLeft(y).tickSize(0))
+            .select("path.domain")
+            .remove();
         return {x, y};
     }
 
