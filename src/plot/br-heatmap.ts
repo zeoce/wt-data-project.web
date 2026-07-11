@@ -35,6 +35,7 @@ export class BrHeatmap extends Plot {
     colorMaps: BrHeatColorMap | null = null;
     private frozenAxisSvg!: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;
     private frozenAxisG!: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
+    private focusedBr: string | null = null;
 
     selected: Array<SquareInfo> = [];
 
@@ -208,6 +209,8 @@ export class BrHeatmap extends Plot {
 
         // reset selected data and sub plots
         this.selected = [];
+        this.focusedBr = null;
+        this.applyBrFocus();
         await this.resetSubPlots();
 
         // sort the tooltip in the top layer
@@ -260,6 +263,8 @@ export class BrHeatmap extends Plot {
             .style("stroke", HEATMAP_CELL_STROKE)
             .style("cursor", d => d.value > 0 ? "pointer" : "default");
 
+        this.applyBrFocus();
+
         if (transition) {
             merged.transition()
                 .style("fill", d => this.value2color(d.value));
@@ -295,13 +300,13 @@ export class BrHeatmap extends Plot {
             .select("#main-g g path.domain").remove()
 
         // y-axis
-        this.g.append("g")
+        const yAxis = this.g.append("g")
             .attr("id", "br-heatmap-y")
             .attr("class", "heatmap-axis heatmap-axis-y")
             .style("font-size", 14)
             .attr("transform", `translate(-5, 0)`)
             .call(d3.axisLeft(y).tickSize(0))
-            .select("#main-g g path.domain").remove()
+        yAxis.select("path.domain").remove();
 
         this.frozenAxisG
             .selectAll("*")
@@ -311,7 +316,46 @@ export class BrHeatmap extends Plot {
             .call(d3.axisLeft(y).tickSize(0))
             .select("path.domain")
             .remove();
+        this.bindBrAxisInteractions(yAxis);
+        this.bindBrAxisInteractions(this.frozenAxisG);
         return {x, y};
+    }
+
+    private bindBrAxisInteractions(axis: d3.Selection<SVGGElement, unknown, HTMLElement, any>): void {
+        axis.selectAll<SVGGElement, string>(".tick")
+            .attr("role", "button")
+            .attr("tabindex", 0)
+            .attr("aria-label", br => `Focus BR ${br} row`)
+            .attr("aria-pressed", br => String(this.focusedBr === br))
+            .classed("is-br-focused", br => this.focusedBr === br)
+            .on("click.br-focus", br => this.toggleBrFocus(br))
+            .on("keydown.br-focus", br => {
+                if (d3.event.key !== "Enter" && d3.event.key !== " ") return;
+                d3.event.preventDefault();
+                this.toggleBrFocus(br);
+            });
+    }
+
+    private toggleBrFocus(br: string): void {
+        this.focusedBr = this.focusedBr === br ? null : br;
+        this.applyBrFocus();
+    }
+
+    private applyBrFocus(): void {
+        if (!this.g) return;
+
+        this.g.selectAll<SVGRectElement, SquareInfo>("rect")
+            .classed("is-br-dimmed", d => this.focusedBr !== null && d.br !== this.focusedBr)
+            .classed("is-br-focused", d => this.focusedBr === d.br);
+
+        [this.g.select<SVGGElement>("#br-heatmap-y"), this.frozenAxisG]
+            .forEach(axis => {
+                if (!axis || axis.empty()) return;
+                axis.selectAll<SVGGElement, string>(".tick")
+                    .attr("aria-pressed", br => String(this.focusedBr === br))
+                    .classed("is-br-focused", br => this.focusedBr === br)
+                    .classed("is-br-dimmed", br => this.focusedBr !== null && br !== this.focusedBr);
+            });
     }
 
     private extractData(data: Array<TimeseriesRow>): Array<SquareInfo> {

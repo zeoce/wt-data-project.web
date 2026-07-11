@@ -2586,11 +2586,46 @@ button:hover,
 
 #main-svg rect{
   shape-rendering:geometricPrecision;
-  transition:stroke-width .12s ease, stroke .12s ease, filter .12s ease;
+  transition:opacity .18s ease, stroke-width .12s ease, stroke .12s ease, filter .12s ease;
+}
+
+#main-svg .heatmap-axis-y .tick,
+#frozen-br-axis-svg .heatmap-axis-y .tick{
+  cursor:pointer;
+  outline:none;
+}
+
+#main-svg .heatmap-axis-y .tick text,
+#frozen-br-axis-svg .heatmap-axis-y .tick text{
+  transition:fill .18s ease, opacity .18s ease;
+}
+
+#main-svg .heatmap-axis-y .tick.is-br-dimmed text,
+#frozen-br-axis-svg .heatmap-axis-y .tick.is-br-dimmed text{
+  opacity:.34;
+}
+
+#main-svg .heatmap-axis-y .tick.is-br-focused text,
+#frozen-br-axis-svg .heatmap-axis-y .tick.is-br-focused text{
+  fill:#ffffff;
+}
+
+#main-svg .heatmap-axis-y .tick:focus text,
+#frozen-br-axis-svg .heatmap-axis-y .tick:focus text{
+  fill:var(--accent);
+  text-decoration:underline;
 }
 
 #main-svg rect.is-empty-cell{
   opacity:.58;
+}
+
+#main-svg rect.is-br-dimmed{
+  opacity:.16;
+}
+
+#main-svg rect.is-br-focused{
+  opacity:1;
 }
 
 #main-svg rect.is-hovered{
@@ -2939,7 +2974,7 @@ button:hover,
     z-index:6;
     margin-right:calc(var(--heatmap-frozen-axis-width) * -1);
     background:#111916;
-    pointer-events:none;
+    pointer-events:auto;
   }
 
   #main-svg,
