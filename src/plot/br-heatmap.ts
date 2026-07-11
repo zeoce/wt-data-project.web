@@ -4,9 +4,7 @@ import { Plot } from "./plot";
 import { TimeseriesData, TimeseriesRow, TimeseriesRowGetter } from "../data/timeseries-data";
 import { categoricalColors, COLORS, Container, Inject, MousePosition, Provider, utils } from "../utils";
 import { ColorBar } from "./color-bar";
-import { BrLineChart, BrLineChartDataObj } from "./line-chart";
-import { BrHeatmapLegend } from "./legend";
-import { Table } from "./table";
+import { BrLineChartDataObj } from "./line-chart";
 import { BrHeatmapTooltip, Tooltip } from "./tooltip";
 import { Config, Localization, Margin, MeasurementTranslator, NationTranslator } from "../app/config";
 import { brs, Content, nations } from "../app/global-env";
@@ -26,9 +24,6 @@ export class BrHeatmap extends Plot {
     @Inject(Config.BrHeatmapPage.BrHeatmap.margin) readonly margin: Margin;
     @Inject(Config.BrHeatmapPage.BrHeatmap.mainSvgId) readonly mainSvgId: string;
     @Inject(ColorBar) readonly colorBar: ColorBar;
-    @Inject(BrLineChart) readonly lineChart: BrLineChart;
-    @Inject(BrHeatmapLegend) readonly legend: BrHeatmapLegend;
-    @Inject(Table) readonly table: Table;
     @Inject(BrHeatmapTooltip) readonly tooltip: Tooltip;
     @Inject(Content) readonly content: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>
     @Inject(BRHeatMapPage) readonly page: BRHeatMapPage;
@@ -38,18 +33,6 @@ export class BrHeatmap extends Plot {
     private focusedBr: string | null = null;
 
     selected: Array<SquareInfo> = [];
-
-    async updateSubPlots() {
-        await this.table.update();
-        await this.lineChart.update();
-        await this.legend.update();
-    }
-
-    async resetSubPlots() {
-        this.table.reset();
-        this.lineChart.reset();
-        await this.legend.update();
-    }
 
     onPointerLeave(_: SquareInfo, node: SVGRectElement): void {
         d3.select(node).classed("is-hovered", false);
@@ -94,7 +77,6 @@ export class BrHeatmap extends Plot {
             // add the item into the `this.selected`
             this.selected.push(info);
         }
-        await this.updateSubPlots();
     }
 
     cache: TimeseriesData;
@@ -167,19 +149,12 @@ export class BrHeatmap extends Plot {
             const dataObjs = this.extractData(data);
             this.buildAxis();
 
-            // init the color bar, line chart, legend, table and tooltip
+            // Init the colour scale and cell tooltip.
             this.colorBar.init();
-            this.lineChart.init();
-            this.legend.init();
-            this.table.init();
             this.tooltip.init();
 
             // colorMap function
             this.value2color = await this.getValue2color();
-            if (this.table.winRateValue2color === null && this.page.measurement === "win_rate") {
-                this.table.winRateValue2color = this.value2color;
-            }
-
             this.drawSquares(dataObjs, false);
 
             this.cache = data;
@@ -211,8 +186,6 @@ export class BrHeatmap extends Plot {
         this.selected = [];
         this.focusedBr = null;
         this.applyBrFocus();
-        await this.resetSubPlots();
-
         // sort the tooltip in the top layer
         this.tooltip.toTopLayer();
 
