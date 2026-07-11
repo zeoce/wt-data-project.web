@@ -4,7 +4,9 @@ import { Plot } from "./plot";
 import { TimeseriesData, TimeseriesRow, TimeseriesRowGetter } from "../data/timeseries-data";
 import { categoricalColors, COLORS, Container, Inject, MousePosition, Provider, utils } from "../utils";
 import { ColorBar } from "./color-bar";
-import { BrLineChartDataObj } from "./line-chart";
+import { BrLineChart, BrLineChartDataObj } from "./line-chart";
+import { BrHeatmapLegend } from "./legend";
+import { Table } from "./table";
 import { BrHeatmapTooltip, Tooltip } from "./tooltip";
 import { Config, Localization, Margin, MeasurementTranslator, NationTranslator } from "../app/config";
 import { brs, Content, nations } from "../app/global-env";
@@ -24,6 +26,9 @@ export class BrHeatmap extends Plot {
     @Inject(Config.BrHeatmapPage.BrHeatmap.margin) readonly margin: Margin;
     @Inject(Config.BrHeatmapPage.BrHeatmap.mainSvgId) readonly mainSvgId: string;
     @Inject(ColorBar) readonly colorBar: ColorBar;
+    @Inject(BrLineChart) readonly lineChart: BrLineChart;
+    @Inject(BrHeatmapLegend) readonly legend: BrHeatmapLegend;
+    @Inject(Table) readonly table: Table;
     @Inject(BrHeatmapTooltip) readonly tooltip: Tooltip;
     @Inject(Content) readonly content: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>
     @Inject(BRHeatMapPage) readonly page: BRHeatMapPage;
