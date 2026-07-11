@@ -19,7 +19,10 @@ export class ColorBar extends Plot {
     value2color: Value2Color;
 
     init(): ColorBar {
-        this.svg = this.content
+        const heatmapPair = d3.select<HTMLDivElement, unknown>("#heatmap-scroll-pair");
+        const target = heatmapPair.empty() ? this.content : heatmapPair;
+
+        this.svg = target
             .append<SVGSVGElement>("svg")
             .attr("height", this.svgHeight)
             .attr("width", this.svgWidth)

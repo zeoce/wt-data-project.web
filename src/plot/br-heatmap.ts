@@ -129,7 +129,12 @@ export class BrHeatmap extends Plot {
 
     init(): BrHeatmap {
         // build new plot in the content div of page
-        this.svg = this.content
+        const heatmapPair = this.content
+            .append<HTMLDivElement>("div")
+            .attr("id", "heatmap-scroll-pair")
+            .attr("class", "heatmap-scroll-pair");
+
+        this.svg = heatmapPair
             .append<SVGSVGElement>("svg")
             .attr("height", this.svgHeight)
             .attr("width", this.svgWidth)
