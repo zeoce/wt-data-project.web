@@ -168,22 +168,7 @@ export class GroundRbPanel {
 
     private renderLoaded(): void {
         const latest = this.sourceInfo ? this.sourceInfo.latestJoined : null;
-        const premiumCount = this.rows.filter(row => this.isPremium(row)).length;
-        const imageCount = this.imageManifest ? this.imageManifest.stats.vehiclePageImages + this.imageManifest.stats.slotThumbnails : 0;
         this.root.innerHTML = `
-            <header class="workspace-hero">
-                <div class="workspace-hero-copy">
-                    <span class="eyebrow">War Thunder Ground RB</span>
-                    <h1>Vehicle intelligence workspace</h1>
-                    <p>Browse the live forked data set, compare vehicles, inspect sample quality, and jump into the legacy BR heatmap when you need the bigger picture.</p>
-                </div>
-                <dl class="workspace-metrics" aria-label="Ground RB data summary">
-                    ${this.heroMetric("Vehicles", this.rows.length.toLocaleString("en-US"), "Ground RB rows")}
-                    ${this.heroMetric("Latest", latest ? latest.date : "N/A", "joined snapshot")}
-                    ${this.heroMetric("Premium", premiumCount.toLocaleString("en-US"), "tagged vehicles")}
-                    ${this.heroMetric("Images", imageCount.toLocaleString("en-US"), "wiki matches")}
-                </dl>
-            </header>
             <details class="ground-rb-filters" open>
                 <summary><span>Filters and presets</span><small>Nation, BR, premium status, sample floor, and search</small></summary>
                 <div class="ground-rb-intro">
@@ -290,16 +275,6 @@ export class GroundRbPanel {
         this.renderMemory();
         this.updateResults();
         this.renderCompare();
-    }
-
-    private heroMetric(label: string, value: string, note: string): string {
-        return `
-            <div>
-                <dt>${this.escape(label)}</dt>
-                <dd>${this.escape(value)}</dd>
-                <small>${this.escape(note)}</small>
-            </div>
-        `;
     }
 
     private bindEvents(): void {
