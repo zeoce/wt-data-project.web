@@ -1263,16 +1263,20 @@ body:not(.dark-mode) .vehicle-card{
 
 .vehicle-art img.fit-cover{
   object-fit:cover;
+  transform:scale(1.06);
+  transform-origin:center center;
 }
 
 .vehicle-art img.fit-contain{
   object-fit:contain;
+  transform:none;
   padding:8px;
   background:radial-gradient(circle at 50% 45%, rgba(137,221,255,.12), rgba(4,8,12,.72) 68%);
 }
 
 .vehicle-art.using-fallback-image img{
   object-fit:contain;
+  transform:none;
   padding:8px;
 }
 

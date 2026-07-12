@@ -189,7 +189,7 @@ export class GroundRbPanel {
                         ["premium", "Premium"],
                         ["regular", "Non-premium"]
                     ])}
-                    ${this.numberInput("ground-min-battles", "Min battles", "0", "100000", "100", "500")}
+                    ${this.numberInput("ground-min-battles", "Min battles", "0", "100000", "100", "400")}
                     <label class="search-label">Vehicle search
                         <input id="ground-search" type="search" placeholder="XM1, Leopard 2, T-80..." autocomplete="off" aria-label="Search vehicles">
                     </label>
@@ -637,7 +637,7 @@ export class GroundRbPanel {
         (this.byId("ground-br-min") as HTMLInputElement).value = "0";
         (this.byId("ground-br-max") as HTMLInputElement).value = "13.7";
         (this.byId("ground-premium") as HTMLSelectElement).value = preset === "premium" ? "premium" : "all";
-        (this.byId("ground-min-battles") as HTMLInputElement).value = preset === "sample" ? "2000" : "500";
+        (this.byId("ground-min-battles") as HTMLInputElement).value = preset === "sample" ? "2000" : "400";
         (this.byId("ground-search") as HTMLInputElement).value = "";
         this.currentSort = preset === "played" ? "played" : preset === "frags" ? "gkb" : preset === "win" ? "win" : "gkd";
         (this.byId("ground-sort") as HTMLSelectElement).value = this.currentSort;
