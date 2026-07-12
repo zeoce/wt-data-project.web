@@ -22,9 +22,10 @@ export class DarkModeToggle extends Link {
             .attr("type", "checkbox")
             .attr("id", this.id);
 
-        const saved = localStorage.getItem(this.id) === "true";
-        this.checkbox.property("checked", saved);
-        this.applyMode(saved);
+        const stored = localStorage.getItem(this.id);
+        const enabled = stored === null ? true : stored === "true";
+        this.checkbox.property("checked", enabled);
+        this.applyMode(enabled);
 
         this.checkbox.on("change", () => {
             const checked = this.checkbox.property("checked") as boolean;
