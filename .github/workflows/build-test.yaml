@@ -37,3 +37,9 @@ jobs:
 
       - name: Check build artifacts
         run: npm run check:dist
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run UI regression tests
+        run: npm run test:ui

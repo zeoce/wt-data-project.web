@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-10T13:55:09.924Z",
+  "generatedAt": "2026-07-12T04:47:14.362Z",
   "source": {
     "name": "War Thunder Wiki",
     "groundPage": "https://wiki.warthunder.com/ground",
@@ -180,7 +180,7 @@
       "imageWidth": 1200,
       "imageHeight": 630,
       "confidence": "high",
-      "score": 85,
+      "score": 100,
       "matchedBy": "vehicle page image",
       "attribution": "War Thunder Wiki / Gaijin Games Kft. vehicle page image. Referenced remotely; not redistributed in this repository.",
       "matchNotes": [
@@ -188,9 +188,14 @@
         "width >= 500",
         "height >= 250",
         "card-friendly aspect ratio",
-        "filename matches vehicle id/name"
+        "filename matches vehicle id/name",
+        "manual override: Center the vehicle body in the card crop"
       ],
-      "mime": "image/jpeg"
+      "mime": "image/jpeg",
+      "focalX": 43,
+      "focalY": 50,
+      "zoom": 1.18,
+      "notes": "Center the vehicle body in the card crop"
     },
     "ussr_t_54_1947": {
       "imageUrl": "https://wiki.warthunder.com/assets/gunit_social/ussr_t_54_1947.jpg",
@@ -1583,7 +1588,7 @@
       "imageWidth": 1200,
       "imageHeight": 630,
       "confidence": "high",
-      "score": 85,
+      "score": 100,
       "matchedBy": "vehicle page image",
       "attribution": "War Thunder Wiki / Gaijin Games Kft. vehicle page image. Referenced remotely; not redistributed in this repository.",
       "matchNotes": [
@@ -1591,9 +1596,14 @@
         "width >= 500",
         "height >= 250",
         "card-friendly aspect ratio",
-        "filename matches vehicle id/name"
+        "filename matches vehicle id/name",
+        "manual override: Keep the already centered source composition balanced"
       ],
-      "mime": "image/jpeg"
+      "mime": "image/jpeg",
+      "focalX": 50,
+      "focalY": 50,
+      "zoom": 1.12,
+      "notes": "Keep the already centered source composition balanced"
     },
     "ussr_t_55a": {
       "imageUrl": "https://wiki.warthunder.com/assets/gunit_social/ussr_t_55a.jpg",
@@ -22891,7 +22901,7 @@
       "imageWidth": 1200,
       "imageHeight": 630,
       "confidence": "high",
-      "score": 85,
+      "score": 100,
       "matchedBy": "vehicle page image",
       "attribution": "War Thunder Wiki / Gaijin Games Kft. vehicle page image. Referenced remotely; not redistributed in this repository.",
       "matchNotes": [
@@ -22899,9 +22909,14 @@
         "width >= 500",
         "height >= 250",
         "card-friendly aspect ratio",
-        "filename matches vehicle id/name"
+        "filename matches vehicle id/name",
+        "manual override: Center the vehicle body in the card crop"
       ],
-      "mime": "image/jpeg"
+      "mime": "image/jpeg",
+      "focalX": 34,
+      "focalY": 49,
+      "zoom": 1.3,
+      "notes": "Center the vehicle body in the card crop"
     },
     "ussr_a_12_mk_2_matilda_2A_F96": {
       "imageUrl": "https://wiki.warthunder.com/assets/gunit_social/ussr_a_12_mk_2_matilda_2a_f96.jpg",

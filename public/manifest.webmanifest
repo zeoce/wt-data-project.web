@@ -1,0 +1,13 @@
+{
+  "name": "WT Data Project Ground RB",
+  "short_name": "WT Ground RB",
+  "description": "Ground RB vehicle statistics, comparisons, trends, lineups, and battle-rating heatmaps.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090d0b",
+  "theme_color": "#071018",
+  "icons": [
+    { "src": "/img/logo64.png", "sizes": "64x64", "type": "image/png" },
+    { "src": "/img/logo400.png", "sizes": "400x400", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

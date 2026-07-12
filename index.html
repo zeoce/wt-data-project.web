@@ -7,19 +7,14 @@
   <meta name="author" content="ControlNet">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#071018">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>WT Data Project | Ground RB Intelligence</title>
 
   <link rel="icon" href="img/logo.ico">
+  <link rel="apple-touch-icon" href="img/logo400.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="index.css">
-
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-MKCBYJJ8DB"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){ dataLayer.push(arguments); }
-    gtag('js', new Date());
-    gtag('config', 'G-MKCBYJJ8DB');
-  </script>
 
   <!-- Cloudflare Web Analytics -->
   <script defer
@@ -35,13 +30,13 @@
     <div id="content"></div>
   </div>
 
-  <img id="stat"
-       src="https://getloli.controlnet.space/get/@wt-data-project?theme=rule34"
-       alt=""
-       style="display:none">
-
   <!-- When you run http-server **inside the dist folder**,
        the bundle sits next to this HTML file, so no “dist/” prefix. -->
   <script src="bundle.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js'); });
+    }
+  </script>
 </body>
 </html>

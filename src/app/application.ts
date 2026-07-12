@@ -9,7 +9,6 @@ import "../plot/br-heatmap";
 import "../plot/color-bar";
 import "../plot/line-chart";
 import "../plot/legend";
-import "../plot/table";
 import "../plot/tooltip";
 import { GlobalEnv } from "./global-env";
 import "./sidebar/sidebar-element";
@@ -72,6 +71,7 @@ export class Application {
                 // initialize the links
                 Application.links = Application.Links.map(Container.get);
                 Application.links.forEach(link => link.init());
+                Application.initMobileNav();
 
                 // render the first page
                 Application.pages[0].update();
@@ -110,6 +110,34 @@ export class Application {
         });
         sidebar.parentElement?.insertBefore(button, sidebar);
         apply();
+    }
+
+    static initMobileNav(): void {
+        const navbar = document.getElementById("navbar");
+        if (!navbar || document.getElementById("mobile-nav-toggle")) return;
+        const item = document.createElement("li");
+        item.className = "mobile-nav-item";
+        const button = document.createElement("button");
+        button.type = "button";
+        button.id = "mobile-nav-toggle";
+        button.setAttribute("aria-expanded", "false");
+        button.setAttribute("aria-controls", "navbar");
+        button.setAttribute("aria-label", "Open navigation menu");
+        button.textContent = "Menu";
+        item.appendChild(button);
+        navbar.insertBefore(item, navbar.children[1] || null);
+        const close = () => {
+            navbar.classList.remove("nav-open");
+            button.setAttribute("aria-expanded", "false");
+            button.setAttribute("aria-label", "Open navigation menu");
+        };
+        button.addEventListener("click", () => {
+            const open = !navbar.classList.contains("nav-open");
+            navbar.classList.toggle("nav-open", open);
+            button.setAttribute("aria-expanded", String(open));
+            button.setAttribute("aria-label", open ? "Close navigation menu" : "Open navigation menu");
+        });
+        Array.prototype.forEach.call(navbar.querySelectorAll("a"), (link: HTMLAnchorElement) => link.addEventListener("click", close));
     }
 
     static renderDataStatus(message: string, error = false): void {

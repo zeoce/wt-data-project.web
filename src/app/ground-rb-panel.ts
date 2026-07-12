@@ -29,6 +29,7 @@ type SourceInfo = {
     upstreamDataRepo: string;
     forkRepo: string;
     latestJoined: Metadata;
+    trendDates?: { d1: string; d7: string; d30: string };
 };
 
 type VehicleImage = {
@@ -48,6 +49,35 @@ type VehicleImage = {
     confidence: "high" | "medium" | "low";
     score: number;
     matchNotes: string[];
+    focalX?: number;
+    focalY?: number;
+    zoom?: number;
+};
+
+type TrendMetrics = {
+    battles: number | null;
+    winRate: number | null;
+    fragsPerBattle: number | null;
+    fragsPerDeath: number | null;
+    br: number | null;
+};
+
+type VehicleTrend = {
+    name: string;
+    nation: string;
+    latest: TrendMetrics;
+    history: { d1: TrendMetrics | null; d7: TrendMetrics | null; d30: TrendMetrics | null };
+    delta7: TrendMetrics;
+    delta30: TrendMetrics;
+    isNew: boolean;
+};
+
+type TrendManifest = {
+    generatedAt: string;
+    latestDate: string;
+    dates: { d1: string; d7: string; d30: string };
+    vehicles: { [name: string]: VehicleTrend };
+    changes: Array<VehicleTrend & { id: string }>;
 };
 
 type VehicleImageManifest = {
@@ -76,12 +106,21 @@ type Filters = {
     premium: string;
     minBattles: number;
     query: string;
+    favoritesOnly: boolean;
+};
+
+type SavedPreset = {
+    name: string;
+    filters: Filters;
+    sort: SortMode;
+    view: ViewMode;
 };
 
 const STORAGE_RECENT = "wt-ground-rb-recent-searches";
 const STORAGE_FAVORITES = "wt-ground-rb-favorites";
 const STORAGE_COMPARE = "wt-ground-rb-compare";
 const STORAGE_TABLE_SORT = "wt-ground-rb-table-sort";
+const STORAGE_PRESETS = "wt-ground-rb-saved-presets";
 const CARD_PAGE_SIZE = 50;
 const LOW_SAMPLE_BATTLES = 400;
 
@@ -104,6 +143,7 @@ export class GroundRbPanel {
     private metadata: Metadata[];
     private sourceInfo: SourceInfo | null = null;
     private imageManifest: VehicleImageManifest | null = null;
+    private trendManifest: TrendManifest | null = null;
     private selected: JoinedRow | null = null;
     private compareNames: string[] = [];
     private favorites: string[] = [];
@@ -111,7 +151,9 @@ export class GroundRbPanel {
     private currentSort: SortMode = "gkd";
     private currentView: ViewMode = "card";
     private tableSort: TableSort | null = null;
+    private savedPresets: SavedPreset[] = [];
     private visibleCards = CARD_PAGE_SIZE;
+    private drawerReturnFocus: HTMLElement | null = null;
 
     constructor(metadata: Metadata[]) {
         this.metadata = metadata;
@@ -119,6 +161,7 @@ export class GroundRbPanel {
         this.favorites = this.readList(STORAGE_FAVORITES);
         this.recentSearches = this.readList(STORAGE_RECENT);
         this.tableSort = this.readTableSort();
+        this.savedPresets = this.readPresets();
     }
 
     render(parent: HTMLElement): void {
@@ -133,13 +176,16 @@ export class GroundRbPanel {
 
     private async load(): Promise<void> {
         try {
-            const [csv, sourceInfo] = await Promise.all([
-                fetch("data/latest-joined.csv").then(response => this.requireOk(response, "data/latest-joined.csv")).then(response => response.text()),
-                fetch("data/source-info.json").then(response => this.requireOk(response, "data/source-info.json")).then(response => response.json())
+            const [rows, sourceInfo, imageManifest, trendManifest] = await Promise.all([
+                this.loadRows(),
+                fetch("data/source-info.json").then(response => this.requireOk(response, "data/source-info.json")).then(response => response.json()),
+                this.loadImageManifest(),
+                this.loadTrendManifest()
             ]);
             this.sourceInfo = sourceInfo;
-            this.imageManifest = await this.loadImageManifest();
-            this.rows = this.parseCsv(csv)
+            this.imageManifest = imageManifest;
+            this.trendManifest = trendManifest;
+            this.rows = rows
                 .filter(row => row.cls === "Ground_vehicles")
                 .filter(row => this.toNumber(row.rb_battles) > 0);
 
@@ -189,6 +235,10 @@ export class GroundRbPanel {
                         ["premium", "Premium"],
                         ["regular", "Non-premium"]
                     ])}
+                    ${this.select("ground-favorites", "Saved", [
+                        ["all", "All vehicles"],
+                        ["favorites", "Favourites only"]
+                    ])}
                     ${this.numberInput("ground-min-battles", "Min battles", "0", "100000", "100", "400")}
                     <label class="search-label">Vehicle search
                         <input id="ground-search" type="search" placeholder="XM1, Leopard 2, T-80..." autocomplete="off" aria-label="Search vehicles">
@@ -198,13 +248,29 @@ export class GroundRbPanel {
                     <div><strong>Recent searches</strong><span id="recent-searches"></span></div>
                     <div><strong>Favourite vehicles</strong><span id="favorite-vehicles"></span></div>
                 </div>
+                <div class="saved-preset-bar" aria-label="Saved filter presets">
+                    <label>Saved preset
+                        <select id="saved-preset-select" aria-label="Saved preset">${this.savedPresetOptions()}</select>
+                    </label>
+                    <button type="button" id="save-current-preset">Save</button>
+                    <button type="button" id="delete-saved-preset">Delete</button>
+                    <button type="button" id="export-saved-presets">Export</button>
+                    <button type="button" id="import-saved-presets">Import</button>
+                    <input id="preset-import-file" type="file" accept="application/json" hidden>
+                </div>
             </details>
             <div class="results-toolbar" aria-label="Vehicle result display controls">
                 <div class="results-title">
                     <span class="eyebrow">Filtered results</span>
                     <strong id="result-count"></strong>
+                    <small>Data as of ${latest ? this.escape(latest.date) : "N/A"}</small>
                 </div>
                 <div class="results-controls">
+                    <div class="results-actions" aria-label="Workspace tools">
+                        <button type="button" id="open-changes">Changes</button>
+                        <button type="button" id="open-lineup">Lineup</button>
+                        <button type="button" id="open-compare">Compare <span id="compare-count">${this.compareNames.length}</span></button>
+                    </div>
                     <label>Sort
                         ${this.selectBare("ground-sort", [
                             ["gkd", "Frags / death descending"],
@@ -244,9 +310,15 @@ export class GroundRbPanel {
                 </table>
                 <p class="table-legend">Bold Battles values indicate fewer than ${LOW_SAMPLE_BATTLES} battles; interpret cautiously.</p>
             </div>
-            <div class="ground-panels">
-                <article id="vehicle-detail" class="vehicle-detail" aria-live="polite"></article>
-                <article id="vehicle-compare" class="vehicle-compare"></article>
+            <div id="workspace-drawer" class="workspace-drawer" hidden>
+                <div class="workspace-drawer-backdrop" data-drawer-close></div>
+                <aside class="workspace-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="workspace-drawer-title">
+                    <header>
+                        <div><span class="eyebrow">Vehicle workspace</span><h2 id="workspace-drawer-title">Details</h2></div>
+                        <button type="button" id="workspace-drawer-close" aria-label="Close vehicle workspace">Close</button>
+                    </header>
+                    <div id="workspace-drawer-content" class="workspace-drawer-content" aria-live="polite"></div>
+                </aside>
             </div>
             <aside class="source-card">
                 <h3>Data, Source, and License</h3>
@@ -270,15 +342,17 @@ export class GroundRbPanel {
                     </div>
                 </section>
             </div>
+            <div id="app-toast" class="app-toast" role="status" aria-live="polite" hidden></div>
         `;
+        this.applyUrlState();
         this.bindEvents();
         this.renderMemory();
         this.updateResults();
-        this.renderCompare();
+        if (this.selected) this.renderDetail(this.selected);
     }
 
     private bindEvents(): void {
-        ["ground-nation", "ground-br-min", "ground-br-max", "ground-premium", "ground-min-battles", "ground-search"]
+        ["ground-nation", "ground-br-min", "ground-br-max", "ground-premium", "ground-favorites", "ground-min-battles", "ground-search"]
             .forEach(id => this.byId(id).addEventListener("input", () => this.updateResults()));
         this.byId("ground-sort").addEventListener("change", () => {
             this.currentSort = (this.byId("ground-sort") as HTMLSelectElement).value as SortMode;
@@ -292,8 +366,13 @@ export class GroundRbPanel {
         });
         this.byId("vehicle-image-close").addEventListener("click", () => this.closeImagePreview());
         this.root.querySelector("[data-modal-close]").addEventListener("click", () => this.closeImagePreview());
+        this.byId("workspace-drawer-close").addEventListener("click", () => this.closeDrawer());
+        this.root.querySelector("[data-drawer-close]").addEventListener("click", () => this.closeDrawer());
         document.addEventListener("keydown", event => {
-            if (event.key === "Escape") this.closeImagePreview();
+            if (event.key === "Escape") {
+                this.closeImagePreview();
+                this.closeDrawer();
+            }
         });
         this.bindTableHeaderSort();
 
@@ -302,11 +381,15 @@ export class GroundRbPanel {
         this.byId("preset-frags").addEventListener("click", () => this.applyPreset("frags"));
         this.byId("preset-premium").addEventListener("click", () => this.applyPreset("premium"));
         this.byId("preset-sample").addEventListener("click", () => this.applyPreset("sample"));
-
-        const copyButton = this.root.querySelector("#copy-comparison");
-        if (copyButton) {
-            copyButton.addEventListener("click", () => this.copyComparison());
-        }
+        this.byId("open-changes").addEventListener("click", event => this.openChangeFeed(event.currentTarget as HTMLElement));
+        this.byId("open-lineup").addEventListener("click", event => this.openLineupBuilder(event.currentTarget as HTMLElement));
+        this.byId("open-compare").addEventListener("click", event => this.openCompareDrawer(event.currentTarget as HTMLElement));
+        this.byId("save-current-preset").addEventListener("click", () => this.saveCurrentPreset());
+        this.byId("delete-saved-preset").addEventListener("click", () => this.deleteSavedPreset());
+        this.byId("export-saved-presets").addEventListener("click", () => this.exportSavedPresets());
+        this.byId("import-saved-presets").addEventListener("click", () => (this.byId("preset-import-file") as HTMLInputElement).click());
+        this.byId("preset-import-file").addEventListener("change", event => this.importSavedPresets(event));
+        this.byId("saved-preset-select").addEventListener("change", () => this.applySavedPreset());
     }
 
     private bindTableHeaderSort(): void {
@@ -346,10 +429,13 @@ export class GroundRbPanel {
 
     private bindCardButtons(container: HTMLElement): void {
         Array.prototype.forEach.call(container.querySelectorAll("[data-select]"), (button: HTMLButtonElement) => {
-            button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-select")));
+            button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-select"), button));
         });
         Array.prototype.forEach.call(container.querySelectorAll("[data-compare]"), (button: HTMLButtonElement) => {
-            button.addEventListener("click", () => this.toggleCompare(button.getAttribute("data-compare")));
+            button.addEventListener("click", () => {
+                this.toggleCompare(button.getAttribute("data-compare"));
+                this.openCompareDrawer(button);
+            });
         });
         Array.prototype.forEach.call(container.querySelectorAll("[data-fav-toggle]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => {
@@ -361,7 +447,7 @@ export class GroundRbPanel {
             });
         });
         Array.prototype.forEach.call(container.querySelectorAll("[data-show-plot]"), (button: HTMLButtonElement) => {
-            button.addEventListener("click", () => this.showLegacyPlot(button.getAttribute("data-show-plot")));
+            button.addEventListener("click", () => this.openTrendDrawer(button.getAttribute("data-show-plot"), button));
         });
         Array.prototype.forEach.call(container.querySelectorAll("[data-image-preview]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => this.openImagePreview(button.getAttribute("data-image-preview")));
@@ -421,6 +507,7 @@ export class GroundRbPanel {
             .filter(row => filters.nation === "all" || row.nation === filters.nation)
             .filter(row => this.toNumber(row.rb_br) >= filters.brMin && this.toNumber(row.rb_br) <= filters.brMax)
             .filter(row => filters.premium === "all" || (filters.premium === "premium") === this.isPremium(row))
+            .filter(row => !filters.favoritesOnly || this.favorites.indexOf(row.name) >= 0)
             .filter(row => this.toNumber(row.rb_battles) >= filters.minBattles)
             .filter(row => this.matchesQuery(row, filters.query));
 
@@ -437,10 +524,13 @@ export class GroundRbPanel {
             ? tableResults.slice(0, 100).map(item => this.resultRow(item.row, item.resultRank)).join("")
             : `<tr><td class="empty-results" colspan="10">No Ground RB vehicles match the current filters.</td></tr>`;
         Array.prototype.forEach.call(tbody.querySelectorAll("[data-select]"), (button: HTMLButtonElement) => {
-            button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-select")));
+            button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-select"), button));
         });
         Array.prototype.forEach.call(tbody.querySelectorAll("[data-compare]"), (button: HTMLButtonElement) => {
-            button.addEventListener("click", () => this.toggleCompare(button.getAttribute("data-compare")));
+            button.addEventListener("click", () => {
+                this.toggleCompare(button.getAttribute("data-compare"));
+                this.openCompareDrawer(button);
+            });
         });
 
         const visible = rankedResults.slice(0, this.visibleCards);
@@ -450,6 +540,9 @@ export class GroundRbPanel {
         this.bindCardButtons(this.byId("ground-card-view"));
         this.debugVisibleImages(visible.map(item => item.row));
         (this.byId("show-more-cards") as HTMLButtonElement).hidden = results.length <= this.visibleCards || this.currentView !== "card";
+        const compareCount = this.root.querySelector("#compare-count");
+        if (compareCount) compareCount.textContent = String(this.compareNames.length);
+        this.syncUrlState();
     }
 
     private resultRow(row: JoinedRow, rank: number): string {
@@ -498,23 +591,21 @@ export class GroundRbPanel {
                         <button type="button" data-select="${this.escape(row.name)}">Details</button>
                         <button type="button" data-compare="${this.escape(row.name)}">${compared ? "Remove" : "Compare"}</button>
                         <button type="button" data-fav-toggle="${this.escape(row.name)}">${favorite ? "Unfavourite" : "Favourite"}</button>
-                        <button type="button" data-show-plot="${this.escape(row.name)}">Show plot</button>
+                        <button type="button" data-show-plot="${this.escape(row.name)}">Trends</button>
                     </div>
                 </div>
             </article>
         `;
     }
 
-    private selectVehicle(name: string): void {
+    private selectVehicle(name: string, trigger?: HTMLElement): void {
         const row = this.rows.filter(item => item.name === name)[0];
         if (!row) return;
         this.selected = row;
         this.rememberSearch(this.displayName(row));
-        const params = new URLSearchParams(window.location.search);
-        params.set("vehicle", row.name);
-        history.replaceState(null, document.title, `${window.location.pathname}?${params.toString()}${window.location.hash}`);
-        this.renderDetail(row);
+        this.renderDetail(row, trigger);
         this.renderMemory();
+        this.syncUrlState();
     }
 
     private openImagePreview(name: string): void {
@@ -551,12 +642,15 @@ export class GroundRbPanel {
         (this.byId("vehicle-image-preview") as HTMLImageElement).removeAttribute("src");
     }
 
-    private renderDetail(row: JoinedRow): void {
+    private renderDetail(row: JoinedRow, trigger?: HTMLElement): void {
         const favorites = this.favorites.indexOf(row.name) >= 0;
         const lowSample = this.isLowSample(row);
-        this.byId("vehicle-detail").innerHTML = `
-            <span class="eyebrow">Selected vehicle</span>
-            <h3>${this.displayName(row)}</h3>
+        const confidence = this.confidence(row);
+        this.openDrawer(this.rawDisplayName(row), `
+            <div class="drawer-summary-row">
+                <span class="confidence confidence-${confidence.label.toLowerCase()}">${confidence.label} confidence · ${confidence.score}/100</span>
+                <button type="button" id="open-current-trend">View trends</button>
+            </div>
             <div class="detail-actions">
                 <button type="button" id="favorite-current">${favorites ? "Unfavorite" : "Favourite"}</button>
                 <button type="button" id="compare-current">Add To Comparison</button>
@@ -574,29 +668,39 @@ export class GroundRbPanel {
                 <dt>Source update</dt><dd>${this.sourceInfo ? this.escape(this.sourceInfo.latestJoined.date) : "N/A"}</dd>
             </dl>
             <p class="data-caveat">${lowSample ? `Low sample warning: this vehicle has fewer than ${LOW_SAMPLE_BATTLES} battles. ` : ""}Thunderskill data is sample-based and joined data can contain vehicle matching errors.</p>
-        `;
+        `, "details", trigger);
         this.byId("favorite-current").addEventListener("click", () => {
             this.toggleName(this.favorites, row.name, STORAGE_FAVORITES, 99);
             this.renderDetail(row);
             this.renderMemory();
+            this.updateResults();
         });
-        this.byId("compare-current").addEventListener("click", () => this.toggleCompare(row.name));
+        this.byId("compare-current").addEventListener("click", () => {
+            this.toggleCompare(row.name);
+            this.openCompareDrawer();
+        });
+        this.byId("open-current-trend").addEventListener("click", () => this.openTrendDrawer(row.name));
     }
 
     private renderCompare(): void {
+        const drawer = this.root.querySelector("#workspace-drawer") as HTMLElement;
+        if (!drawer || drawer.dataset.mode !== "compare" || drawer.hidden) return;
+        this.renderCompareContent();
+    }
+
+    private renderCompareContent(): void {
         const rows = this.compareNames
             .map(name => this.rows.filter(row => row.name === name)[0])
             .filter(row => row);
-        const container = this.byId("vehicle-compare");
+        const container = this.byId("workspace-drawer-content");
         if (rows.length === 0) {
-            container.innerHTML = "<span class=\"eyebrow\">Compare</span><h3>Comparison bench</h3><p>Select 2 to 4 vehicles to compare.</p>";
+            container.innerHTML = "<div class=\"drawer-empty\"><h3>Comparison bench</h3><p>Select two to four vehicles from cards or the table.</p></div>";
             return;
         }
         container.innerHTML = `
-            <span class="eyebrow">Compare</span>
-            <h3>Comparison bench</h3>
             <div class="compare-actions">
                 <button type="button" id="copy-comparison">Copy comparison summary</button>
+                <button type="button" id="copy-comparison-link">Copy share link</button>
                 <button type="button" id="clear-comparison">Clear comparison</button>
             </div>
             <div class="ground-rb-results-wrap">
@@ -609,10 +713,169 @@ export class GroundRbPanel {
             </div>
         `;
         this.byId("copy-comparison").addEventListener("click", () => this.copyComparison());
+        this.byId("copy-comparison-link").addEventListener("click", () => this.copyShareLink());
         this.byId("clear-comparison").addEventListener("click", () => this.clearCompare());
         Array.prototype.forEach.call(container.querySelectorAll("[data-remove-compare]"), (button: HTMLButtonElement) => {
             button.addEventListener("click", () => this.removeCompare(button.getAttribute("data-remove-compare")));
         });
+    }
+
+    private openDrawer(title: string, content: string, mode: string, trigger?: HTMLElement): void {
+        const drawer = this.byId("workspace-drawer") as HTMLElement;
+        if (trigger) this.drawerReturnFocus = trigger;
+        drawer.dataset.mode = mode;
+        this.byId("workspace-drawer-title").textContent = title;
+        this.byId("workspace-drawer-content").innerHTML = content;
+        drawer.hidden = false;
+        document.body.classList.add("drawer-open");
+        (this.byId("workspace-drawer-close") as HTMLButtonElement).focus();
+    }
+
+    private closeDrawer(): void {
+        const drawer = this.root.querySelector("#workspace-drawer") as HTMLElement;
+        if (!drawer || drawer.hidden) return;
+        drawer.hidden = true;
+        document.body.classList.remove("drawer-open");
+        this.drawerReturnFocus?.focus();
+    }
+
+    private openCompareDrawer(trigger?: HTMLElement): void {
+        this.openDrawer("Compare vehicles", "", "compare", trigger);
+        this.renderCompareContent();
+    }
+
+    private openTrendDrawer(name: string, trigger?: HTMLElement): void {
+        const row = this.rows.filter(item => item.name === name)[0];
+        if (!row) return;
+        const trend = this.trendManifest && this.trendManifest.vehicles[name];
+        if (!trend) {
+            this.openDrawer(`${this.rawDisplayName(row)} trends`, "<div class=\"drawer-empty\"><p>No historical snapshots are available for this vehicle yet.</p></div>", "trend", trigger);
+            return;
+        }
+        const snapshots: Array<[string, string, TrendMetrics | null]> = [
+            ["Latest", this.trendManifest.latestDate, trend.latest],
+            ["Previous", this.trendManifest.dates.d1, trend.history.d1],
+            ["7-day reference", this.trendManifest.dates.d7, trend.history.d7],
+            ["30-day reference", this.trendManifest.dates.d30, trend.history.d30]
+        ];
+        this.openDrawer(`${this.rawDisplayName(row)} trends`, `
+            <div class="trend-deltas">
+                ${this.deltaCard("Win rate · 7d", trend.delta7.winRate, "pp")}
+                ${this.deltaCard("Frags / death · 7d", trend.delta7.fragsPerDeath, "")}
+                ${this.deltaCard("Battles · 7d", trend.delta7.battles, "")}
+                ${this.deltaCard("BR · 30d", trend.delta30.br, "")}
+            </div>
+            <div class="trend-snapshot-grid">
+                ${snapshots.map(([label, date, metrics]) => `
+                    <section>
+                        <span>${label}</span><strong>${this.escape(date)}</strong>
+                        <dl>
+                            <div><dt>Win</dt><dd>${metrics ? this.formatPercentage(String(metrics.winRate ?? "")) : "N/A"}</dd></div>
+                            <div><dt>Battles</dt><dd>${metrics ? this.formatCount(String(metrics.battles ?? "")) : "N/A"}</dd></div>
+                            <div><dt>F/D</dt><dd>${metrics ? this.formatRatio(String(metrics.fragsPerDeath ?? "")) : "N/A"}</dd></div>
+                            <div><dt>BR</dt><dd>${metrics ? this.formatValue(String(metrics.br ?? "")) : "N/A"}</dd></div>
+                        </dl>
+                    </section>
+                `).join("")}
+            </div>
+        `, "trend", trigger);
+    }
+
+    private deltaCard(label: string, value: number | null, suffix: string): string {
+        const number = Number(value);
+        const available = value !== null && Number.isFinite(number);
+        const direction = available ? number > 0 ? "up" : number < 0 ? "down" : "flat" : "flat";
+        const formatted = available ? `${number > 0 ? "+" : ""}${number}${suffix}` : "N/A";
+        return `<div class="trend-delta trend-${direction}"><span>${label}</span><strong>${formatted}</strong></div>`;
+    }
+
+    private openChangeFeed(trigger?: HTMLElement): void {
+        const changes = this.trendManifest ? this.trendManifest.changes.slice(0, 20) : [];
+        this.openDrawer("Latest changes", changes.length ? `
+            <div class="change-feed">
+                ${changes.map(change => `
+                    <button type="button" data-change-vehicle="${this.escape(change.id)}">
+                        <span><strong>${this.escape(String(change.name).replace(/_/g, " "))}</strong><small>${this.escape(change.nation)} · BR ${change.latest.br ?? "N/A"}</small></span>
+                        <span class="change-values">${change.isNew ? "New" : `${this.signed(change.delta7.winRate)} pp WR · ${this.signed(change.delta7.fragsPerDeath)} F/D`}</span>
+                    </button>
+                `).join("")}
+            </div>
+        ` : "<div class=\"drawer-empty\"><p>No historical change data is available.</p></div>", "changes", trigger);
+        Array.prototype.forEach.call(this.byId("workspace-drawer-content").querySelectorAll("[data-change-vehicle]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => this.openTrendDrawer(button.getAttribute("data-change-vehicle"), button));
+        });
+    }
+
+    private signed(value: number | null): string {
+        if (value === null || !Number.isFinite(Number(value))) return "N/A";
+        return `${Number(value) > 0 ? "+" : ""}${value}`;
+    }
+
+    private openLineupBuilder(trigger?: HTMLElement): void {
+        const defaultNation = (this.byId("ground-nation") as HTMLSelectElement).value;
+        const nation = defaultNation === "all" ? "USA" : defaultNation;
+        this.openDrawer("Ground RB lineup builder", `
+            <div class="lineup-controls">
+                ${this.select("lineup-nation", "Nation", this.nationOptions().filter(option => option[0] !== "all"))}
+                ${this.numberInput("lineup-br", "Maximum BR", "1", "13.7", "0.3", (this.byId("ground-br-max") as HTMLInputElement).value)}
+                ${this.numberInput("lineup-size", "Vehicles", "3", "8", "1", "5")}
+                <button type="button" id="generate-lineup">Generate lineup</button>
+            </div>
+            <div id="lineup-results"></div>
+        `, "lineup", trigger);
+        (this.byId("lineup-nation") as HTMLSelectElement).value = nation;
+        this.byId("generate-lineup").addEventListener("click", () => this.renderLineupRecommendations());
+        this.renderLineupRecommendations();
+    }
+
+    private renderLineupRecommendations(): void {
+        const nation = (this.byId("lineup-nation") as HTMLSelectElement).value;
+        const br = this.toNumber((this.byId("lineup-br") as HTMLInputElement).value);
+        const size = Math.max(3, Math.min(8, this.toNumber((this.byId("lineup-size") as HTMLInputElement).value)));
+        const candidates = this.rows
+            .filter(row => row.nation === nation && this.toNumber(row.rb_br) <= br && this.toNumber(row.rb_battles) >= LOW_SAMPLE_BATTLES)
+            .sort((a, b) => this.lineupScore(b, br) - this.lineupScore(a, br));
+        const lineup: JoinedRow[] = [];
+        const brBands = [0, .3, .7, 1.0];
+        brBands.forEach(offset => {
+            const candidate = candidates.find(row => this.toNumber(row.rb_br) >= br - offset && lineup.indexOf(row) < 0);
+            if (candidate && lineup.length < size) lineup.push(candidate);
+        });
+        candidates.forEach(row => {
+            if (lineup.length < size && lineup.indexOf(row) < 0) lineup.push(row);
+        });
+        const container = this.byId("lineup-results");
+        container.innerHTML = lineup.length ? `
+            <div class="lineup-list">
+                ${lineup.map((row, index) => `<button type="button" data-lineup-vehicle="${this.escape(row.name)}"><span>#${index + 1}</span><strong>${this.displayName(row)}</strong><small>BR ${this.formatValue(row.rb_br)} · ${this.formatPercentage(row.rb_win_rate)} · ${this.formatRatio(row.rb_ground_frags_per_death)} F/D</small></button>`).join("")}
+            </div>
+            <button type="button" id="copy-lineup">Copy lineup</button>
+        ` : "<div class=\"drawer-empty\"><p>No vehicles meet this nation, BR, and sample threshold.</p></div>";
+        Array.prototype.forEach.call(container.querySelectorAll("[data-lineup-vehicle]"), (button: HTMLButtonElement) => {
+            button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-lineup-vehicle"), button));
+        });
+        const copy = container.querySelector("#copy-lineup");
+        if (copy) copy.addEventListener("click", () => this.copyText(lineup.map(row => `${this.rawDisplayName(row)} (BR ${row.rb_br})`).join("\n"), "Lineup copied"));
+    }
+
+    private lineupScore(row: JoinedRow, targetBr: number): number {
+        const brDistance = Math.max(0, targetBr - this.toNumber(row.rb_br));
+        return this.toNumber(row.rb_ground_frags_per_death) * 35
+            + this.toNumber(row.rb_ground_frags_per_battle) * 25
+            + this.toNumber(row.rb_win_rate) * .4
+            + Math.log10(Math.max(10, this.toNumber(row.rb_battles))) * 8
+            - brDistance * 18;
+    }
+
+    private confidence(row: JoinedRow): { score: number; label: "High" | "Medium" | "Low" } {
+        const battles = this.toNumber(row.rb_battles);
+        const battleScore = Math.min(65, Math.round(Math.log10(Math.max(1, battles)) / 5 * 65));
+        const image = this.vehicleImage(row);
+        const imageScore = image ? image.confidence === "high" ? 15 : image.confidence === "medium" ? 10 : 4 : 0;
+        const ageDays = this.sourceInfo ? Math.max(0, Math.floor((Date.now() - new Date(`${this.sourceInfo.latestJoined.date}T00:00:00Z`).getTime()) / 86400000)) : 30;
+        const freshnessScore = Math.max(0, 20 - ageDays * 2);
+        const score = Math.max(0, Math.min(100, battleScore + imageScore + freshnessScore));
+        return { score, label: score >= 75 ? "High" : score >= 50 ? "Medium" : "Low" };
     }
 
     private copyComparison(): void {
@@ -622,7 +885,40 @@ export class GroundRbPanel {
         const text = rows.map(row =>
             `${this.displayName(row)}: BR ${this.formatValue(row.rb_br)}, ${this.formatPercentage(row.rb_win_rate)} WR, ${this.formatCount(row.rb_battles)} battles, ${this.formatRatio(row.rb_ground_frags_per_battle)} frags / battle, ${this.formatRatio(row.rb_ground_frags_per_death)} frags / death`
         ).join("\n");
-        navigator.clipboard?.writeText(text);
+        this.copyText(text, "Comparison copied");
+    }
+
+    private copyShareLink(): void {
+        this.syncUrlState();
+        this.copyText(window.location.href, "Share link copied");
+    }
+
+    private copyText(text: string, message: string): void {
+        const fallback = () => {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            textarea.remove();
+            this.toast(message);
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => this.toast(message)).catch(fallback);
+        } else {
+            fallback();
+        }
+    }
+
+    private toast(message: string): void {
+        const toast = this.byId("app-toast") as HTMLElement;
+        toast.textContent = message;
+        toast.hidden = false;
+        window.setTimeout(() => {
+            toast.hidden = true;
+        }, 2200);
     }
 
     private applyPreset(preset: string): void {
@@ -630,6 +926,7 @@ export class GroundRbPanel {
         (this.byId("ground-br-min") as HTMLInputElement).value = "0";
         (this.byId("ground-br-max") as HTMLInputElement).value = "13.7";
         (this.byId("ground-premium") as HTMLSelectElement).value = preset === "premium" ? "premium" : "all";
+        (this.byId("ground-favorites") as HTMLSelectElement).value = "all";
         (this.byId("ground-min-battles") as HTMLInputElement).value = preset === "sample" ? "2000" : "400";
         (this.byId("ground-search") as HTMLInputElement).value = "";
         this.currentSort = preset === "played" ? "played" : preset === "frags" ? "gkb" : preset === "win" ? "win" : "gkd";
@@ -645,7 +942,8 @@ export class GroundRbPanel {
             brMax: this.toNumber((this.byId("ground-br-max") as HTMLInputElement).value),
             premium: (this.byId("ground-premium") as HTMLSelectElement).value,
             minBattles: this.toNumber((this.byId("ground-min-battles") as HTMLInputElement).value),
-            query: (this.byId("ground-search") as HTMLInputElement).value
+            query: (this.byId("ground-search") as HTMLInputElement).value,
+            favoritesOnly: (this.byId("ground-favorites") as HTMLSelectElement).value === "favorites"
         };
     }
 
@@ -702,9 +1000,8 @@ export class GroundRbPanel {
             });
         }
         Array.prototype.forEach.call(this.root.querySelectorAll("[data-favorite]"), (button: HTMLButtonElement) => {
-            button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-favorite")));
+            button.addEventListener("click", () => this.selectVehicle(button.getAttribute("data-favorite"), button));
         });
-        if (this.selected) this.renderDetail(this.selected);
     }
 
     private toggleCompare(name: string): void {
@@ -788,9 +1085,30 @@ export class GroundRbPanel {
         return response;
     }
 
+    private async loadRows(): Promise<JoinedRow[]> {
+        try {
+            const response = await fetch("data/latest-joined.json");
+            if (response.ok) return await response.json();
+        } catch {
+            // Fall through to the legacy CSV for older or partial deployments.
+        }
+        const response = await fetch("data/latest-joined.csv");
+        return this.parseCsv(await this.requireOk(response, "data/latest-joined.csv").text());
+    }
+
     private async loadImageManifest(): Promise<VehicleImageManifest | null> {
         try {
             const response = await fetch("data/vehicle-images.json");
+            if (!response.ok) return null;
+            return await response.json();
+        } catch {
+            return null;
+        }
+    }
+
+    private async loadTrendManifest(): Promise<TrendManifest | null> {
+        try {
+            const response = await fetch("data/vehicle-trends.json");
             if (!response.ok) return null;
             return await response.json();
         } catch {
@@ -818,6 +1136,146 @@ export class GroundRbPanel {
         } catch {
             return null;
         }
+    }
+
+    private readPresets(): SavedPreset[] {
+        try {
+            const value = JSON.parse(localStorage.getItem(STORAGE_PRESETS) || "[]");
+            return Array.isArray(value) ? value.slice(0, 20) : [];
+        } catch {
+            return [];
+        }
+    }
+
+    private savedPresetOptions(): string {
+        return `<option value="">Choose preset</option>${this.savedPresets.map((preset, index) => `<option value="${index}">${this.escape(preset.name)}</option>`).join("")}`;
+    }
+
+    private refreshSavedPresetSelect(): void {
+        const select = this.root.querySelector("#saved-preset-select") as HTMLSelectElement;
+        if (select) select.innerHTML = this.savedPresetOptions();
+    }
+
+    private saveCurrentPreset(): void {
+        const suggested = `Preset ${this.savedPresets.length + 1}`;
+        const name = window.prompt("Preset name", suggested);
+        if (!name || !name.trim()) return;
+        const preset: SavedPreset = { name: name.trim(), filters: this.filters(), sort: this.currentSort, view: this.currentView };
+        const existing = this.savedPresets.findIndex(item => item.name.toLowerCase() === preset.name.toLowerCase());
+        if (existing >= 0) this.savedPresets[existing] = preset;
+        else this.savedPresets.push(preset);
+        this.savedPresets = this.savedPresets.slice(0, 20);
+        localStorage.setItem(STORAGE_PRESETS, JSON.stringify(this.savedPresets));
+        this.refreshSavedPresetSelect();
+        this.toast("Preset saved");
+    }
+
+    private deleteSavedPreset(): void {
+        const select = this.byId("saved-preset-select") as HTMLSelectElement;
+        if (select.value === "") return;
+        this.savedPresets.splice(Number(select.value), 1);
+        localStorage.setItem(STORAGE_PRESETS, JSON.stringify(this.savedPresets));
+        this.refreshSavedPresetSelect();
+        this.toast("Preset deleted");
+    }
+
+    private applySavedPreset(): void {
+        const select = this.byId("saved-preset-select") as HTMLSelectElement;
+        if (select.value === "") return;
+        const preset = this.savedPresets[Number(select.value)];
+        if (!preset) return;
+        this.applyFilterValues(preset.filters);
+        this.currentSort = preset.sort;
+        (this.byId("ground-sort") as HTMLSelectElement).value = preset.sort;
+        this.setView(preset.view);
+        this.toast("Preset applied");
+    }
+
+    private exportSavedPresets(): void {
+        const blob = new Blob([JSON.stringify({ version: 1, presets: this.savedPresets }, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "wt-ground-rb-presets.json";
+        link.click();
+        URL.revokeObjectURL(url);
+        this.toast("Presets exported");
+    }
+
+    private importSavedPresets(event: Event): void {
+        const input = event.currentTarget as HTMLInputElement;
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const parsed = JSON.parse(String(reader.result || "{}"));
+                if (!Array.isArray(parsed.presets)) throw new Error("invalid preset file");
+                this.savedPresets = parsed.presets.slice(0, 20);
+                localStorage.setItem(STORAGE_PRESETS, JSON.stringify(this.savedPresets));
+                this.refreshSavedPresetSelect();
+                this.toast("Presets imported");
+            } catch {
+                this.toast("Preset import failed");
+            }
+            input.value = "";
+        };
+        reader.readAsText(file);
+    }
+
+    private applyFilterValues(filters: Filters): void {
+        (this.byId("ground-nation") as HTMLSelectElement).value = filters.nation || "all";
+        (this.byId("ground-br-min") as HTMLInputElement).value = String(filters.brMin ?? 0);
+        (this.byId("ground-br-max") as HTMLInputElement).value = String(filters.brMax ?? 13.7);
+        (this.byId("ground-premium") as HTMLSelectElement).value = filters.premium || "all";
+        (this.byId("ground-favorites") as HTMLSelectElement).value = filters.favoritesOnly ? "favorites" : "all";
+        (this.byId("ground-min-battles") as HTMLInputElement).value = String(filters.minBattles ?? LOW_SAMPLE_BATTLES);
+        (this.byId("ground-search") as HTMLInputElement).value = filters.query || "";
+    }
+
+    private applyUrlState(): void {
+        const params = new URLSearchParams(window.location.search);
+        const filters: Filters = {
+            nation: params.get("nation") || "all",
+            brMin: this.toNumber(params.get("brMin") || "0"),
+            brMax: this.toNumber(params.get("brMax") || "13.7"),
+            premium: params.get("premium") || "all",
+            minBattles: this.toNumber(params.get("battles") || String(LOW_SAMPLE_BATTLES)),
+            query: params.get("q") || "",
+            favoritesOnly: params.get("favorites") === "1"
+        };
+        this.applyFilterValues(filters);
+        const sorts: SortMode[] = ["win", "played", "gkd", "gkb", "brAsc", "brDesc", "name"];
+        const sort = params.get("sort") as SortMode;
+        if (sorts.indexOf(sort) >= 0) this.currentSort = sort;
+        (this.byId("ground-sort") as HTMLSelectElement).value = this.currentSort;
+        this.currentView = params.get("view") === "table" ? "table" : "card";
+        (this.byId("ground-card-view") as HTMLElement).hidden = this.currentView !== "card";
+        (this.byId("ground-table-view") as HTMLElement).hidden = this.currentView !== "table";
+        this.byId("view-card").setAttribute("aria-pressed", String(this.currentView === "card"));
+        this.byId("view-table").setAttribute("aria-pressed", String(this.currentView === "table"));
+        const compare = (params.get("compare") || "").split(",").filter(Boolean);
+        if (compare.length) this.compareNames = compare.slice(0, 4);
+    }
+
+    private syncUrlState(): void {
+        if (!this.root || !this.root.querySelector("#ground-nation")) return;
+        const filters = this.filters();
+        const params = new URLSearchParams();
+        if (filters.nation !== "all") params.set("nation", filters.nation);
+        if (filters.brMin !== 0) params.set("brMin", String(filters.brMin));
+        if (filters.brMax !== 13.7) params.set("brMax", String(filters.brMax));
+        if (filters.premium !== "all") params.set("premium", filters.premium);
+        if (filters.minBattles !== LOW_SAMPLE_BATTLES) params.set("battles", String(filters.minBattles));
+        if (filters.query) params.set("q", filters.query);
+        if (filters.favoritesOnly) params.set("favorites", "1");
+        if (this.currentSort !== "gkd") params.set("sort", this.currentSort);
+        if (this.currentView !== "card") params.set("view", this.currentView);
+        if (this.selected) params.set("vehicle", this.selected.name);
+        if (this.compareNames.length) params.set("compare", this.compareNames.join(","));
+        if (new URLSearchParams(window.location.search).get("debugImages") === "1") params.set("debugImages", "1");
+        const query = params.toString();
+        history.replaceState(null, document.title, `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
     }
 
     private nationOptions(): Array<[string, string]> {
@@ -873,10 +1331,14 @@ export class GroundRbPanel {
         }
         const fallback = image.sourceKind === "vehicle-page-image" ? image.fallbackImageUrl : "";
         const fitClass = this.imageFitClass(image);
+        const focalX = Number(image.focalX ?? (image.sourceKind === "vehicle-page-image" ? 42 : 50));
+        const focalY = Number(image.focalY ?? 50);
+        const zoom = Number(image.zoom ?? (image.sourceKind === "vehicle-page-image" ? 1.18 : 1));
+        const imageStyle = `--image-shift-x:${50 - focalX}%;--image-shift-y:${50 - focalY}%;--image-zoom:${zoom}`;
         return `
             <div class="vehicle-art has-image" data-image-source="${this.escape(image.sourceKind)}" data-image-score="${this.escape(String(image.score || 0))}">
                 <button type="button" class="vehicle-image-button" data-image-preview="${this.escape(row.name)}" aria-label="Open ${this.displayName(row)} image preview">
-                    <img class="${fitClass}" src="${this.escape(image.thumbnailUrl || image.imageUrl)}" data-fallback-src="${this.escape(fallback || "")}" alt="${this.displayName(row)} vehicle image" loading="lazy" onerror="if (this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; this.dataset.fallbackSrc = ''; this.classList.add('fit-contain'); this.closest('.vehicle-art').classList.add('using-fallback-image'); } else { this.closest('.vehicle-art').classList.add('image-failed'); this.remove(); }">
+                    <img class="${fitClass}" style="${imageStyle}" src="${this.escape(image.thumbnailUrl || image.imageUrl)}" data-fallback-src="${this.escape(fallback || "")}" alt="${this.displayName(row)} vehicle image" loading="lazy" onerror="if (this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; this.dataset.fallbackSrc = ''; this.classList.add('fit-contain'); this.closest('.vehicle-art').classList.add('using-fallback-image'); } else { this.closest('.vehicle-art').classList.add('image-failed'); this.remove(); }">
                 </button>
                 <div class="vehicle-art-overlay" aria-hidden="true"></div>
                 <div class="vehicle-art-badges" aria-hidden="true">
@@ -953,30 +1415,6 @@ export class GroundRbPanel {
 
     private isLowSample(row: JoinedRow): boolean {
         return this.toNumber(row.rb_battles) > 0 && this.toNumber(row.rb_battles) < LOW_SAMPLE_BATTLES;
-    }
-
-    private showLegacyPlot(name: string): void {
-        const row = this.rows.filter(item => item.name === name)[0];
-        if (!row) return;
-        const classSelect = document.getElementById("class-selection") as HTMLSelectElement;
-        const modeSelect = document.getElementById("mode-selection") as HTMLSelectElement;
-        const brRangeSelect = document.getElementById("br-range-selection") as HTMLSelectElement;
-        const viewSelect = document.getElementById("view-mode-selection") as HTMLSelectElement;
-        if (viewSelect) {
-            viewSelect.value = "heatmap";
-            localStorage.setItem("view-mode-selection", "heatmap");
-            viewSelect.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        if (classSelect) classSelect.value = "Ground_vehicles";
-        if (modeSelect) modeSelect.value = "rb";
-        if (brRangeSelect) {
-            brRangeSelect.value = "0";
-            localStorage.setItem("br-range-selection", "0");
-            brRangeSelect.dispatchEvent(new Event("change", { bubbles: true }));
-        }
-        const target = document.getElementById("main-svg") || document.getElementById("content");
-        target?.scrollIntoView({ behavior: "smooth", block: "start" });
-        this.selectVehicle(row.name);
     }
 
     private byId(id: string): HTMLElement {
