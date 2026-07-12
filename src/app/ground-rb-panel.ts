@@ -483,13 +483,6 @@ export class GroundRbPanel {
                         <h3>${this.displayName(row)}</h3>
                         <span class="result-rank">#${rank}</span>
                     </div>
-                    <div class="badge-row">
-                        <span>BR ${this.formatValue(row.rb_br)}</span>
-                        <span>${this.escape(row.nation)}</span>
-                        <span>${this.escape(this.typeLabel(row))}</span>
-                        <span>Rank N/A</span>
-                        ${this.isPremium(row) ? "<span class=\"premium-badge\">Premium</span>" : ""}
-                    </div>
                     <dl class="stat-grid">
                         ${this.stat("Battles", this.formatCount(row.rb_battles))}
                         ${this.stat("Win rate", this.formatPercentage(row.rb_win_rate))}
