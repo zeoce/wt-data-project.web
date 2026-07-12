@@ -53,6 +53,6 @@ jobs:
           latest_date="$(node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('public/data/source-info.json','utf8')); console.log(s.latestJoined.date)")"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/data/latest-joined.csv public/data/metadata.json public/data/source-info.json public/data/vehicle-images.json
+          git add public/data/latest-joined.csv public/data/latest-joined.json public/data/metadata.json public/data/source-info.json public/data/vehicle-images.json public/data/vehicle-trends.json
           git commit -m "Refresh public data to ${latest_date}"
           git push origin HEAD:main

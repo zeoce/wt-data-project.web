@@ -68,7 +68,7 @@ npm run build:production
 npm run check:dist
 ```
 
-`prepare:data` downloads upstream metadata from `ControlNet/wt-data-project.data`, writes `public/data/metadata.json`, and writes the latest joined CSV to `public/data/latest-joined.csv`. Webpack copies these files into `dist/data/`, so the deployed app can load `/data/metadata.json` and show an in-app data status.
+`prepare:data` downloads upstream metadata from `ControlNet/wt-data-project.data`, keeps the latest joined CSV for legacy compatibility, emits a Brotli-friendly `public/data/latest-joined.json` browser snapshot, and generates `public/data/vehicle-trends.json` from the nearest available 1-, 7-, and 30-day joined snapshots.
 
 `prepare:images` builds `public/data/vehicle-images.json` from the official War Thunder Wiki. It first records slot thumbnails from the Ground Vehicles page as fallbacks, then checks each vehicle page for a higher-quality vehicle-page image. If a MediaWiki-compatible `api.php` endpoint is available, the script can score page-embedded image files from `prop=images` and `prop=imageinfo`; the current public wiki may not expose that endpoint, so the script also supports the official vehicle page OpenGraph image as the primary source. The manifest stores remote image URLs, fallback URLs, dimensions, source type, confidence, scores, and match notes; it does not download or redistribute image files.
 
@@ -81,10 +81,26 @@ Manual image corrections can be added to `scripts/vehicle-image-overrides.json` 
   "us_xm_803": {
     "sourceFileTitle": "custom-source-note.jpg",
     "imageUrl": "https://example.com/attributed-image.jpg",
+    "focalX": 42,
+    "focalY": 50,
+    "zoom": 1.18,
     "notes": "Better front/side render"
   }
 }
 ```
+
+`focalX` and `focalY` describe the vehicle subject's percentage position inside the source image. The card renderer shifts that point toward the center, while `zoom` controls the crop. Image URLs are optional when an override only corrects framing.
+
+### Tests And Maintenance
+
+```sh
+npm run build:pages
+npm run check:dist
+npm run test:ui
+npm run prune:css
+```
+
+`check:dist` validates all required static assets and cross-checks the latest metadata, source, image, and trend manifests. The Playwright suite covers startup, responsive cards, mobile navigation and spacing, workspace drawers, shareable filters, the sticky Vehicle column, and PWA assets. The service worker caches the shell for repeat visits and uses network-first caching for `/data/` so daily snapshots do not become silently stale.
 
 ### Scheduled Data Refresh
 
@@ -115,34 +131,15 @@ The Ground RB card gallery uses `public/data/vehicle-images.json` for best-effor
 
 ## Features
 
-Mouse tooltip in heatmap.
-![brheatmap-tooltip](https://github.com/ControlNet/wt-data-project.web/blob/main/img/brheatmap-tooltip.gif)
-
-Click to check the data trends.
-![brheatmap-click](https://github.com/ControlNet/wt-data-project.web/blob/main/img/brheatmap-click.gif)
-
-View raw data.
-![brheatmap-raws](https://github.com/ControlNet/wt-data-project.web/blob/main/img/brheatmap-raws.gif)
-
-## Todo List
-<div id="todo-list-section">
-This repo is still in progress.
-
- - [x] Battle rating heatmap 
-    - [x] Interactive trend graph
-        - [x] Compatible for "battles" data
-        - [x] Mouse tooltip
-        - [ ] Adjustable date range
-    - [x] Display table with selected data  
-    - [x] Mouse tooltip
-    - [ ] New measurement: average repair fees
-    - [x] Improve color map
-    - [ ] Use N/A to represent missing data rather than 0
- - [x] Trend graph
-    - [ ] Mouse tooltip
- - [ ] Dark mode
- - [ ] Other animated graphs
-</div>
+- Ground RB card and sortable table views with responsive filters and presets.
+- Best-effort official wiki imagery with per-vehicle focal-point overrides and resilient fallbacks.
+- Responsive workspace drawer for details, comparisons, confidence, and historical trends.
+- Shareable URLs for filters, sort, view, selected vehicle, and up to four compared vehicles.
+- Favourite-only browsing plus user-saved filter presets with JSON import/export.
+- Ground RB lineup recommendations by nation, BR ceiling, sample floor, and performance.
+- Daily change feed and compact 1-, 7-, and 30-day vehicle trend snapshots.
+- Accessible battle-rating heatmap with sticky mobile BR labels and row focus.
+- Dark mode by default, installable PWA shell, network-first data caching, and daily upstream refreshes.
 
 ## Acknowledge
 

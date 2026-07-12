@@ -8,6 +8,8 @@
     "prebuild:production": "npm run prepare:data && npm run prepare:images",
     "build:production": "webpack -c webpack.prod.js --mode production",
     "check:dist": "node scripts/check-dist.js",
+    "test:ui": "playwright test",
+    "prune:css": "node scripts/prune-unused-css.js",
     "watch": "webpack --watch",
     "start": "http-server ./dist -p 3000"
   },
@@ -32,6 +34,7 @@
     "wasm-utils": "file:wasm-utils/pkg"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/d3": "^4.11.0",
     "@types/d3-array": "^1.2.1",
     "@types/d3-axis": "^1.0.8",
