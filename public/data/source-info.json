@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-08-30T17:04:14.547Z",
+  "generatedAt": "2026-09-02T16:55:08.382Z",
   "upstreamMetadataUrl": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/master/metadata.json",
   "upstreamWebRepo": "https://github.com/ControlNet/wt-data-project.web",
   "upstreamDataRepo": "https://github.com/ControlNet/wt-data-project.data",
   "forkRepo": "https://github.com/zeoce/wt-data-project.web",
   "latestJoined": {
     "type": "joined",
-    "date": "2026-08-30",
-    "path": "https://controlnet.space/wt-data-project.data/joined/2026-08-30.csv"
+    "date": "2026-09-02",
+    "path": "https://controlnet.space/wt-data-project.data/joined/2026-09-02.csv"
   },
   "trendDates": {
-    "d1": "2026-08-27",
-    "d7": "2026-08-21",
-    "d30": "2026-07-31"
+    "d1": "2026-08-30",
+    "d7": "2026-08-24",
+    "d30": "2026-08-03"
   }
 }
