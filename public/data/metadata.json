@@ -3845,6 +3845,11 @@
     "path": "https://controlnet.space/wt-data-project.data/joined/2026-09-14.csv"
   },
   {
+    "type": "joined",
+    "date": "2026-09-17",
+    "path": "https://controlnet.space/wt-data-project.data/joined/2026-09-17.csv"
+  },
+  {
     "type": "ts",
     "date": "2019-11-22",
     "path": "https://controlnet.space/wt-data-project.data/ts/ts2019-11-22.csv"
@@ -7785,6 +7790,11 @@
     "path": "https://controlnet.space/wt-data-project.data/ts/ts2026-09-14.csv"
   },
   {
+    "type": "ts",
+    "date": "2026-09-17",
+    "path": "https://controlnet.space/wt-data-project.data/ts/ts2026-09-17.csv"
+  },
+  {
     "type": "wk",
     "date": "2019-11-22",
     "path": "https://controlnet.space/wt-data-project.data/wk/wk2019-11-22.csv"
@@ -9688,5 +9698,10 @@
     "type": "wk",
     "date": "2026-09-14",
     "path": "https://controlnet.space/wt-data-project.data/wk/wk2026-09-14.csv"
+  },
+  {
+    "type": "wk",
+    "date": "2026-09-17",
+    "path": "https://controlnet.space/wt-data-project.data/wk/wk2026-09-17.csv"
   }
 ]
