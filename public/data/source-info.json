@@ -1,17 +1,45 @@
 {
-  "generatedAt": "2026-10-15T17:29:00.217Z",
-  "upstreamMetadataUrl": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/master/metadata.json",
+  "generatedAt": "2026-10-19T18:54:21.633Z",
+  "upstreamMetadataUrl": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/8112b825e3e68c4863bab6ac02fcb7a3cbbb2d0b/metadata.json",
+  "upstreamCommit": "8112b825e3e68c4863bab6ac02fcb7a3cbbb2d0b",
+  "upstreamMetadataSha256": "a95508faaa6dafced460bc597b6f7713cd4fe2965dc018af8c4a442b6f30feca",
+  "snapshots": [
+    {
+      "date": "2026-09-17",
+      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/8112b825e3e68c4863bab6ac02fcb7a3cbbb2d0b/joined/2026-09-17.csv",
+      "sha256": "07325d2fcb4db27e9d7d097dc85e6e5716723d1a6f81d0089857bc078f1e3f3e",
+      "rows": 2517
+    },
+    {
+      "date": "2026-10-08",
+      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/8112b825e3e68c4863bab6ac02fcb7a3cbbb2d0b/joined/2026-10-08.csv",
+      "sha256": "a5b33f8c45e773cf966c1cb14a0b3c0af1c0e326a0d76f5c198d6569e074f3ef",
+      "rows": 2557
+    },
+    {
+      "date": "2026-10-14",
+      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/8112b825e3e68c4863bab6ac02fcb7a3cbbb2d0b/joined/2026-10-14.csv",
+      "sha256": "3761e2ecd769f8471a39172a6106974fd2039fd99c7f0f20c7d07d6452a38591",
+      "rows": 2557
+    },
+    {
+      "date": "2026-10-17",
+      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/8112b825e3e68c4863bab6ac02fcb7a3cbbb2d0b/joined/2026-10-17.csv",
+      "sha256": "b11cf212cd6a2b118293503ff3a573895c4849283bc4025e36e8b2808f6d86a8",
+      "rows": 2558
+    }
+  ],
   "upstreamWebRepo": "https://github.com/ControlNet/wt-data-project.web",
   "upstreamDataRepo": "https://github.com/ControlNet/wt-data-project.data",
   "forkRepo": "https://github.com/zeoce/wt-data-project.web",
   "latestJoined": {
     "type": "joined",
-    "date": "2026-10-14",
-    "path": "https://controlnet.space/wt-data-project.data/joined/2026-10-14.csv"
+    "date": "2026-10-17",
+    "path": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/8112b825e3e68c4863bab6ac02fcb7a3cbbb2d0b/joined/2026-10-17.csv"
   },
   "trendDates": {
-    "d1": "2026-10-08",
-    "d7": "2026-10-05",
-    "d30": "2026-09-14"
+    "d1": "2026-10-14",
+    "d7": "2026-10-08",
+    "d30": "2026-09-17"
   }
 }
