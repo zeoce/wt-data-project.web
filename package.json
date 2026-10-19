@@ -8,6 +8,7 @@
     "prebuild:production": "npm run prepare:data && npm run prepare:images",
     "build:production": "webpack -c webpack.prod.js --mode production",
     "check:dist": "node scripts/check-dist.js",
+    "test:data": "node --test tests/prepare-data.test.cjs",
     "test:ui": "playwright test",
     "prune:css": "node scripts/prune-unused-css.js",
     "watch": "webpack --watch",

@@ -1,9 +1,7 @@
 const fs = require("fs");
 const path = require("path");
-const https = require("https");
-
-const METADATA_URL =
-  "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/master/metadata.json";
+const { createHash } = require("crypto");
+const { getText, metadataUrl, normalizeMetadata, upstreamCommit } = require("./upstream-data");
 const DATA_DIR = path.resolve(__dirname, "..", "public", "data");
 
 function parseCsvLine(line) {
@@ -26,6 +24,7 @@ function parseCsvLine(line) {
       current += char;
     }
   }
+  if (quoted) throw new Error("Unterminated quoted field in joined CSV");
   out.push(current);
   return out;
 }
@@ -33,8 +32,15 @@ function parseCsvLine(line) {
 function parseCsv(csv) {
   const lines = csv.trim().split(/\r?\n/);
   const headers = parseCsvLine(lines.shift() || "");
+  const required = ["name", "nation", "cls", "rb_br", "rb_battles", "rb_win_rate",
+    "rb_ground_frags_per_battle", "rb_ground_frags_per_death"];
+  if (new Set(headers).size !== headers.length || required.some(header => !headers.includes(header))) {
+    throw new Error("Joined CSV is missing required columns or has duplicate headers");
+  }
+  if (lines.length < 500) throw new Error("Joined CSV contains fewer than 500 vehicle rows");
   return lines.map(line => {
     const values = parseCsvLine(line);
+    if (values.length !== headers.length) throw new Error("Joined CSV row has the wrong number of columns");
     const row = {};
     headers.forEach((header, index) => {
       row[header] = values[index] || "";
@@ -94,43 +100,27 @@ function roundDelta(current, previous) {
   return Math.round((current - previous) * 100) / 100;
 }
 
-function getText(url) {
-  return new Promise((resolve, reject) => {
-    https
-      .get(url, response => {
-        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-          getText(response.headers.location).then(resolve, reject);
-          return;
-        }
-        if (response.statusCode !== 200) {
-          reject(new Error(`GET ${url} returned ${response.statusCode}`));
-          response.resume();
-          return;
-        }
-        let body = "";
-        response.setEncoding("utf8");
-        response.on("data", chunk => {
-          body += chunk;
-        });
-        response.on("end", () => resolve(body));
-      })
-      .on("error", reject);
-  });
-}
-
 async function main() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-
-  const metadataText = await getText(METADATA_URL);
-  const metadata = JSON.parse(metadataText);
-  const joined = metadata.filter(entry => entry.type === "joined");
+  const commit = await upstreamCommit();
+  const resolvedMetadataUrl = metadataUrl(commit);
+  const metadataText = await getText(resolvedMetadataUrl);
+  const metadata = normalizeMetadata(JSON.parse(metadataText), commit);
+  const joined = metadata.filter(entry => entry.type === "joined").sort((a, b) => a.date.localeCompare(b.date));
   if (joined.length === 0) {
     throw new Error("metadata.json did not include joined data entries");
   }
 
   const latestJoined = joined[joined.length - 1];
-  const latestJoinedCsv = await getText(latestJoined.path);
-  const latestRows = parseCsv(latestJoinedCsv);
+  const snapshots = new Map();
+  const downloadSnapshot = async entry => {
+    const csv = await getText(entry.path);
+    const rows = parseCsv(csv);
+    if (!rows.some(row => row.cls === "Ground_vehicles")) throw new Error(`No ground vehicles in ${entry.path}`);
+    snapshots.set(entry.date, { date: entry.date, url: entry.path,
+      sha256: createHash("sha256").update(csv).digest("hex"), rows: rows.length });
+    return { csv, rows };
+  };
+  const { csv: latestJoinedCsv, rows: latestRows } = await downloadSnapshot(latestJoined);
   const trendEntries = {
     d1: nearestSnapshot(joined, latestJoined.date, 1),
     d7: nearestSnapshot(joined, latestJoined.date, 7),
@@ -139,7 +129,7 @@ async function main() {
   const uniqueTrendEntries = Array.from(new Map(Object.values(trendEntries).map(entry => [entry.date, entry])).values());
   const historicalRows = new Map();
   await Promise.all(uniqueTrendEntries.map(async entry => {
-    historicalRows.set(entry.date, parseCsv(await getText(entry.path)));
+    historicalRows.set(entry.date, (await downloadSnapshot(entry)).rows);
   }));
   const historicalIndexes = new Map(Array.from(historicalRows.entries()).map(([date, rows]) => [date, indexRows(rows)]));
   const trendManifest = {
@@ -189,7 +179,10 @@ async function main() {
     .slice(0, 30);
   const sourceInfo = {
     generatedAt: new Date().toISOString(),
-    upstreamMetadataUrl: METADATA_URL,
+    upstreamMetadataUrl: resolvedMetadataUrl,
+    upstreamCommit: commit,
+    upstreamMetadataSha256: createHash("sha256").update(metadataText).digest("hex"),
+    snapshots: [...snapshots.values()].sort((a, b) => a.date.localeCompare(b.date)),
     upstreamWebRepo: "https://github.com/ControlNet/wt-data-project.web",
     upstreamDataRepo: "https://github.com/ControlNet/wt-data-project.data",
     forkRepo: "https://github.com/zeoce/wt-data-project.web",
@@ -197,6 +190,8 @@ async function main() {
     trendDates: trendManifest.dates
   };
 
+  // Do not replace existing outputs until every input has downloaded and validated.
+  fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.writeFileSync(path.join(DATA_DIR, "metadata.json"), JSON.stringify(metadata, null, 2));
   fs.writeFileSync(path.join(DATA_DIR, "latest-joined.csv"), latestJoinedCsv);
   fs.writeFileSync(path.join(DATA_DIR, "latest-joined.json"), JSON.stringify(latestRows));
@@ -204,11 +199,16 @@ async function main() {
   fs.writeFileSync(path.join(DATA_DIR, "source-info.json"), JSON.stringify(sourceInfo, null, 2));
 
   console.log(`Prepared ${joined.length} metadata entries.`);
+  console.log(`Upstream commit: ${commit}`);
   console.log(`Latest joined data: ${latestJoined.date} -> public/data/latest-joined.csv`);
   console.log(`Prepared compact JSON and vehicle trends for ${Object.values(trendManifest.dates).join(", ")}.`);
 }
 
-main().catch(error => {
-  console.error(error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
+}
+
+module.exports = { main, parseCsv };

@@ -32,6 +32,7 @@ jobs:
 
       - name: Refresh public data
         run: |
+          npm run test:data
           npm run prepare:data
           npm run prepare:images
 
