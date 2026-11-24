@@ -1,31 +1,31 @@
 {
-  "generatedAt": "2026-11-21T19:52:59.234Z",
-  "upstreamMetadataUrl": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/6fc46d215cb3441a761b377059c6dd9692ad7c87/metadata.json",
-  "upstreamCommit": "6fc46d215cb3441a761b377059c6dd9692ad7c87",
-  "upstreamMetadataSha256": "81e80e0b72defea1054b98851c06d3fb72ce27172285d0fe43ac91ea52b9d364",
+  "generatedAt": "2026-11-24T22:50:24.288Z",
+  "upstreamMetadataUrl": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/1a4898ea1f0d3196d0fe69c6d424693345e68a1a/metadata.json",
+  "upstreamCommit": "1a4898ea1f0d3196d0fe69c6d424693345e68a1a",
+  "upstreamMetadataSha256": "986e5a8e59a17b825a1ee6601c328d74a78f823fb1815ae7f5a182d003733c9a",
   "snapshots": [
     {
-      "date": "2026-10-20",
-      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/6fc46d215cb3441a761b377059c6dd9692ad7c87/joined/2026-10-20.csv",
-      "sha256": "dc17300975743d36389349c0b93b5064379e3b51bf8549d3731c45e646ff9ab9",
+      "date": "2026-10-23",
+      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/1a4898ea1f0d3196d0fe69c6d424693345e68a1a/joined/2026-10-23.csv",
+      "sha256": "3efaf962bbec1bf55ffa7fe17ac85c3a733b686ccef55e4c37dee48e3e9daa1d",
       "rows": 2558
     },
     {
-      "date": "2026-11-12",
-      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/6fc46d215cb3441a761b377059c6dd9692ad7c87/joined/2026-11-12.csv",
-      "sha256": "fb92ab1ee7d6d721493413ce9aab362ea29b179aecbd15ff2fed1cedd4a420a3",
-      "rows": 2561
-    },
-    {
-      "date": "2026-11-18",
-      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/6fc46d215cb3441a761b377059c6dd9692ad7c87/joined/2026-11-18.csv",
-      "sha256": "b109aef00aa9c3a9c38c963e1929a17f135e042233f030c6ed000342145b89ce",
-      "rows": 2581
+      "date": "2026-11-15",
+      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/1a4898ea1f0d3196d0fe69c6d424693345e68a1a/joined/2026-11-15.csv",
+      "sha256": "4347bff6984a903020c8c8986f5790036bf1e28eecf1a90fbd5666ef9765b4b3",
+      "rows": 2579
     },
     {
       "date": "2026-11-21",
-      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/6fc46d215cb3441a761b377059c6dd9692ad7c87/joined/2026-11-21.csv",
+      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/1a4898ea1f0d3196d0fe69c6d424693345e68a1a/joined/2026-11-21.csv",
       "sha256": "5984e6e10ed5a14a000a5e110e7b7c40e6c2b00804e1fac1453e2cd6604e319b",
+      "rows": 2586
+    },
+    {
+      "date": "2026-11-24",
+      "url": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/1a4898ea1f0d3196d0fe69c6d424693345e68a1a/joined/2026-11-24.csv",
+      "sha256": "c328722a62e351e7ae2bf20ccb0c200afbc5d2d06cd982abe58b792b06014a6f",
       "rows": 2586
     }
   ],
@@ -34,12 +34,12 @@
   "forkRepo": "https://github.com/zeoce/wt-data-project.web",
   "latestJoined": {
     "type": "joined",
-    "date": "2026-11-21",
-    "path": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/6fc46d215cb3441a761b377059c6dd9692ad7c87/joined/2026-11-21.csv"
+    "date": "2026-11-24",
+    "path": "https://raw.githubusercontent.com/ControlNet/wt-data-project.data/1a4898ea1f0d3196d0fe69c6d424693345e68a1a/joined/2026-11-24.csv"
   },
   "trendDates": {
-    "d1": "2026-11-18",
-    "d7": "2026-11-12",
-    "d30": "2026-10-20"
+    "d1": "2026-11-21",
+    "d7": "2026-11-15",
+    "d30": "2026-10-23"
   }
 }
